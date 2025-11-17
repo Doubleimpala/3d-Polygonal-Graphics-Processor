@@ -1,7 +1,7 @@
 # 3d-Polygonal-Graphics-Processor
 
-##Software
-###3d Mapping to Triangles
+## Software
+### 3d Mapping to Triangles
 
-##Hardware
-###Z-Buffer Implementation
+## Hardware
+### Z-Buffer Implementation
