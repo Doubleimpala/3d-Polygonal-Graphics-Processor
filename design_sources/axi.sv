@@ -521,7 +521,18 @@ end
 //end
 
 
-
+//Make frame buffer here.
+//depth: 76,800
+//width: 8 bits
+blk_mem_gen_0 frame_buffer(
+    .clka(vram_clka),
+    .clkb(vram_clkb),
+    .*
+);
+//We're doing double 8 bit frame buffer.
+//depth: 76,800
+//width: 8 bits
+//So make a second one.
 blk_mem_gen_0 vram(
     .clka(vram_clka),
     .clkb(vram_clkb),
