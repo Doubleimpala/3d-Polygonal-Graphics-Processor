@@ -25,7 +25,7 @@
 
 `timescale 1 ns / 1 ps
 
-module hdmi_text_controller_v1_0_AXI #
+module hdmi_top_level_axi #
 (
 
     // Parameters of Axi Slave Bus Interface S_AXI
@@ -151,6 +151,7 @@ logic [C_S_AXI_DATA_WIDTH-1:0]	 reg_data_out;
 
 logic [31:0] palette_regs[16];
 logic [31:0] control_regs[3];
+
 
 logic vram_clka;
 logic vram_clkb;
@@ -522,18 +523,16 @@ end
 
 
 //Make frame buffer here.
-//depth: 76,800
-//width: 8 bits
-blk_mem_gen_0 frame_buffer(
+//320 * 240 * 1 B = 76.8 kB
+//width: 8 bits (8-bit colorspace)
+blk_mem_gen_0 display_buffer(
     .clka(vram_clka),
     .clkb(vram_clkb),
     .*
 );
-//We're doing double 8 bit frame buffer.
-//depth: 76,800
-//width: 8 bits
-//So make a second one.
-blk_mem_gen_0 vram(
+
+// Double buffering
+blk_mem_gen_0 render_buffer(
     .clka(vram_clka),
     .clkb(vram_clkb),
     .*
