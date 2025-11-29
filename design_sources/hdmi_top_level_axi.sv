@@ -25,7 +25,7 @@
 
 `timescale 1 ns / 1 ps
 
-module hdmi_top_level_axi #
+module hdmi_text_controller_v1_0_AXI #
 (
 
     // Parameters of Axi Slave Bus Interface S_AXI
