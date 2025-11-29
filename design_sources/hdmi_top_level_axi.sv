@@ -153,46 +153,8 @@ logic [31:0] palette_regs[16];
 logic [31:0] control_regs[3];
 
 
-logic writebuf_clka;
-logic writebuf_clkb;
-logic writebuf_ena;
-logic writebuf_enb;
-logic writebuf_wea;
-logic writebuf_web;
-logic [C_S_AXI_ADDR_WIDTH - 3:0] writebuf_addra; // MIGHT HAVE TO CHANGE WIDTH
-logic [C_S_AXI_ADDR_WIDTH - 3:0] writebuf_addrb;
-logic [7:0] writebuf_dina;
-logic [7:0] writebuf_dinb;
-logic [7:0] writebuf_douta;
-logic [7:0] writebuf_doutb; 
-
-logic readbuf_clka;
-logic readbuf_clkb;
-logic readbuf_ena;
-logic readbuf_enb;
-logic readbuf_wea;
-logic readbuf_web;
-logic [C_S_AXI_ADDR_WIDTH - 3:0] readbuf_addra; // MIGHT HAVE TO CHANGE WIDTH
-logic [C_S_AXI_ADDR_WIDTH - 3:0] readbuf_addrb;
-logic [7:0] readbuf_dina;
-logic [7:0] readbuf_dinb;
-logic [7:0] readbuf_douta;
-logic [7:0] readbuf_doutb; 
-
 logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_write;
 logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_read;
-
-assign web = 'b0;
-
-assign addra = (wea == 0)? addr_read : addr_write;
-
-assign writebuf_clka = S_AXI_ACLK;
-assign writebuf_clkb = S_AXI_ACLK;
-assign readbuf_clka = S_AXI_ACLK;
-assign readbuf_clkb = S_AXI_ACLK;
-assign ena = 'b1;
-assign enb = 'b1;
-
 
 integer	 byte_index;
 logic	 aw_en;
@@ -542,38 +504,19 @@ end
 
 
 
+//Buffer signals for the GPU side.
+logic wea;
+logic [16:0] addra;
+logic [7:0] dina;
 
+//Buffer signals for the VGA side
+logic [7:0] doutb;
+logic [16:0] addrb;
 
-
-//Make frame buffer here.
-//320 * 240 * 1 B = 76.8 kB
-//width: 8 bits (8-bit colorspace)
-blk_mem_gen_0 display_buffer(
-    .writebuf_clka(vram_clka),
-    .writebuf_clkb(vram_clkb),
-    .
+framebuffer fb(
+  .clk(S_AXI_ACLK),
+  .*
 );
-
-// Double buffering
-blk_mem_gen_0 render_buffer(
-    .readbuf_clka(vram_clka),
-    .readbuf_clkb(vram_clkb),
-    .readbuf,
-    .readbuf,
-    .readbuf,
-    .readbuf,
-    .readbuf,
-);
-
-always_ff @()
-
-logic [C_S_AXI_ADDR_WIDTH - 1:0] vram_addr;
-logic [7:0] invert_glyph_code;
-logic [7:0] fg_bg;
-
-
-
-
 
 // Accessing array of 2d bitmap pointers
 // Lab 7.1
@@ -610,18 +553,16 @@ logic [7:0] fg_bg;
 // assign font_rom_addr = {glyph[6:0], drawY[3:0]};
 
 
-assign readbuf_addrb = DrawY*240 + DrawX;
+assign addrb = DrawY*240 + DrawX;
 
 logic [7:0] pixel_data;
 
 //DONT CHANGE
-assign pixel_data = readbuf_doutb;
-
+assign pixel_data = doutb;
 
 logic [3:0] r,g,b;
 
-//CHANGED
-assign r = {pixel_data[7:5],1'b0}; // Fix based on color setup.
+assign r = {pixel_data[7:5],1'b0};
 assign g = {pixel_data[4:2],1'b0};
 assign b = {pixel_data[1:0],2'b0};
 
