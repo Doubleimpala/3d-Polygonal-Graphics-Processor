@@ -503,6 +503,14 @@ end
 //Triangle logic
 
 
+//Declaring the zbuffer. Need to connect to rest of logic using z input & output.
+zbuffer zb(
+  .clk(S_AXI_ACLK),
+  .draw_x(drawX),
+  .draw_y(drawY),
+  .z(),
+  .draw()
+);
 
 //Buffer signals for the GPU side.
 logic wea;
@@ -553,7 +561,7 @@ framebuffer fb(
 // assign font_rom_addr = {glyph[6:0], drawY[3:0]};
 
 
-assign addrb = DrawY*240 + DrawX;
+assign addrb = drawY*320 + drawX;
 
 logic [7:0] pixel_data;
 

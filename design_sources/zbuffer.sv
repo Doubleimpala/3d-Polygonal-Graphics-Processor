@@ -6,9 +6,8 @@ module zbuffer(
     input logic draw_x,
     input logic draw_y,
     input logic [7:0] z, // Only 8 bits right?
-    input logic s_axi_aclk,
 
-    output logic draw,
+    output logic draw
 );
 
 logic vram_clka;
@@ -24,8 +23,8 @@ logic [7:0] dinb;
 logic [7:0] douta;
 logic [7:0] doutb; 
 
-assign vram_clka = s_axi_aclk;
-assign vram_clkb = s_axi_aclk;
+assign vram_clka = clk;
+assign vram_clkb = clk;
 assign ena = 'b1;
 assign enb = 'b1;
 // Port A always writes, port B always reads
