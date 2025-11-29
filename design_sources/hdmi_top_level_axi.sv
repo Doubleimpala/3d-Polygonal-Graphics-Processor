@@ -153,18 +153,31 @@ logic [31:0] palette_regs[16];
 logic [31:0] control_regs[3];
 
 
-logic vram_clka;
-logic vram_clkb;
-logic ena;
-logic enb;
-logic [3:0] wea;
-logic [3:0] web;
-logic [C_S_AXI_ADDR_WIDTH - 3:0] addra; // MIGHT HAVE TO CHANGE WIDTH
-logic [C_S_AXI_ADDR_WIDTH - 3:0] addrb;
-logic [31:0] dina;
-logic [31:0] dinb;
-logic [31:0] douta;
-logic [31:0] doutb; 
+logic writebuf_clka;
+logic writebuf_clkb;
+logic writebuf_ena;
+logic writebuf_enb;
+logic writebuf_wea;
+logic writebuf_web;
+logic [C_S_AXI_ADDR_WIDTH - 3:0] writebuf_addra; // MIGHT HAVE TO CHANGE WIDTH
+logic [C_S_AXI_ADDR_WIDTH - 3:0] writebuf_addrb;
+logic [7:0] writebuf_dina;
+logic [7:0] writebuf_dinb;
+logic [7:0] writebuf_douta;
+logic [7:0] writebuf_doutb; 
+
+logic readbuf_clka;
+logic readbuf_clkb;
+logic readbuf_ena;
+logic readbuf_enb;
+logic readbuf_wea;
+logic readbuf_web;
+logic [C_S_AXI_ADDR_WIDTH - 3:0] readbuf_addra; // MIGHT HAVE TO CHANGE WIDTH
+logic [C_S_AXI_ADDR_WIDTH - 3:0] readbuf_addrb;
+logic [7:0] readbuf_dina;
+logic [7:0] readbuf_dinb;
+logic [7:0] readbuf_douta;
+logic [7:0] readbuf_doutb; 
 
 logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_write;
 logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_read;
@@ -173,8 +186,10 @@ assign web = 'b0;
 
 assign addra = (wea == 0)? addr_read : addr_write;
 
-assign vram_clka = S_AXI_ACLK;
-assign vram_clkb = S_AXI_ACLK;
+assign writebuf_clka = S_AXI_ACLK;
+assign writebuf_clkb = S_AXI_ACLK;
+assign readbuf_clka = S_AXI_ACLK;
+assign readbuf_clkb = S_AXI_ACLK;
 assign ena = 'b1;
 assign enb = 'b1;
 
@@ -522,25 +537,42 @@ end
 //end
 
 
+
+//Triangle logic
+
+
+
+
+
+
 //Make frame buffer here.
 //320 * 240 * 1 B = 76.8 kB
 //width: 8 bits (8-bit colorspace)
 blk_mem_gen_0 display_buffer(
-    .clka(vram_clka),
-    .clkb(vram_clkb),
-    .*
+    .writebuf_clka(vram_clka),
+    .writebuf_clkb(vram_clkb),
+    .
 );
 
 // Double buffering
 blk_mem_gen_0 render_buffer(
-    .clka(vram_clka),
-    .clkb(vram_clkb),
-    .*
+    .readbuf_clka(vram_clka),
+    .readbuf_clkb(vram_clkb),
+    .readbuf,
+    .readbuf,
+    .readbuf,
+    .readbuf,
+    .readbuf,
 );
+
+always_ff @()
 
 logic [C_S_AXI_ADDR_WIDTH - 1:0] vram_addr;
 logic [7:0] invert_glyph_code;
 logic [7:0] fg_bg;
+
+
+
 
 
 // Accessing array of 2d bitmap pointers
@@ -551,20 +583,20 @@ logic [7:0] fg_bg;
 // Lab 7.2: Multiply address by 2 since one character every 2 bytes instead of every byte
 //CHANGE
 
-assign vram_addr = ((drawY >> 4) * 80 + (drawX >> 3)) << 1;
-assign addrb = vram_addr[C_S_AXI_ADDR_WIDTH - 1 : 2];
-assign invert_glyph_code = doutb[(vram_addr[1] * 16) + 8 +: 8];
-assign fg_bg = doutb[(vram_addr[0] * 16) +: 8];
+// assign vram_addr = ((drawY >> 4) * 80 + (drawX >> 3)) << 1;
+// assign addrb = vram_addr[C_S_AXI_ADDR_WIDTH - 1 : 2];
+// assign invert_glyph_code = doutb[(vram_addr[1] * 16) + 8 +: 8];
+// assign fg_bg = doutb[(vram_addr[0] * 16) +: 8];
 
-logic [6:0] glyph;
-logic invert;
-assign glyph = invert_glyph_code[6:0];
-assign invert = invert_glyph_code[7];
+// logic [6:0] glyph;
+// logic invert;
+// assign glyph = invert_glyph_code[6:0];
+// assign invert = invert_glyph_code[7];
 
-logic [3:0] fg_idx;
-logic [3:0] bg_idx;
-assign fg_idx = fg_bg[7:4];
-assign bg_idx = fg_bg[3:0];
+// logic [3:0] fg_idx;
+// logic [3:0] bg_idx;
+// assign fg_idx = fg_bg[7:4];
+// assign bg_idx = fg_bg[3:0];
 
 // always_ff @(posedge S_AXI_ACLK) begin
 //         addrb <= vram_addr[16:2];
@@ -575,52 +607,30 @@ assign bg_idx = fg_bg[3:0];
 // font_rom_index = {glyph_code[6:0], DrawY[3:0]}, use glyph_code[7] for invert)
 // Font Rom also little endian, so access with row len - drawx
 //DONT CHANGE
-assign font_rom_addr = {glyph[6:0], drawY[3:0]};
+// assign font_rom_addr = {glyph[6:0], drawY[3:0]};
 
 
-logic pixel_data;
+assign readbuf_addrb = DrawY*240 + DrawX;
+
+logic [7:0] pixel_data;
 
 //DONT CHANGE
-assign pixel_data = font_rom_data[7 - drawX[2:0]];
+assign pixel_data = readbuf_doutb;
 
-//DONT CHANGE
-logic [3:0] fg_r, fg_g, fg_b, bg_r, bg_g, bg_b;
+
+logic [3:0] r,g,b;
 
 //CHANGED
-assign fg_r = palette_regs[fg_idx][11:8];
-assign fg_g = palette_regs[fg_idx][7:4];
-assign fg_b = palette_regs[fg_idx][3:0];
-assign bg_r = palette_regs[bg_idx][11:8];
-assign bg_g = palette_regs[bg_idx][7:4];
-assign bg_b = palette_regs[bg_idx][3:0];
+assign r = {pixel_data[7:5],1'b0}; // Fix based on color setup.
+assign g = {pixel_data[4:2],1'b0};
+assign b = {pixel_data[1:0],2'b0};
 
 
 //DONT CHANGE
 always_comb begin
-    if(invert) begin
-        if(pixel_data) begin
-            red = bg_r;
-            blue = bg_b;
-            green = bg_g;
-          end
-        else begin
-            red = fg_r;
-            blue = fg_b;
-            green = fg_g;
-        end
-    end
-    else begin
-        if(pixel_data) begin
-            red = fg_r;
-            blue = fg_b;
-            green = fg_g;
-          end
-        else begin
-            red = bg_r;
-            blue = bg_b;
-            green = bg_g;
-        end
-     end
-// User logic ends
+  red = r;
+  blue = b;
+  green = g;
 end
+// User logic ends
 endmodule

@@ -5,7 +5,7 @@ module zbuffer(
     input logic clk,
     input logic draw_x,
     input logic draw_y,
-    input logic z,
+    input logic [7:0] z, // Only 8 bits right?
     input logic s_axi_aclk,
 
     output logic draw,
@@ -19,10 +19,10 @@ logic [3:0] wea;
 logic [3:0] web;
 logic [19:0] addra;
 logic [19:0] addrb;
-logic [8:0] dina;
-logic [8:0] dinb;
-logic [8:0] douta;
-logic [8:0] doutb; 
+logic [7:0] dina; // 9 bits???
+logic [7:0] dinb;
+logic [7:0] douta;
+logic [7:0] doutb; 
 
 assign vram_clka = s_axi_aclk;
 assign vram_clkb = s_axi_aclk;

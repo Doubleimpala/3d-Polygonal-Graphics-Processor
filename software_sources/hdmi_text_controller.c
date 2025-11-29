@@ -1,5 +1,3 @@
-
-
 /***************************** Include Files *******************************/
 #include "hdmi_text_controller.h"
 #include "stdio.h"
