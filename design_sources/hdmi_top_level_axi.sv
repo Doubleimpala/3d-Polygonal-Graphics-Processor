@@ -124,6 +124,12 @@ logic  [C_S_AXI_DATA_WIDTH - 1 : 0] 	axi_rdata;
 logic  [1 : 0] 	axi_rresp;
 logic  	axi_rvalid;
 
+
+
+
+//TODO: DELETE THIS ONCE YOU FINISH FRAME BUFFER TESTBENCH
+logic douta;
+
 // Example-specific design signals
 // local parameter for addressing 32 bit / 64 bit C_S_AXI_DATA_WIDTH
 // ADDR_LSB is used for addressing 32/64 bit registers/memories
