@@ -4,7 +4,11 @@ module framebuffer_tb_direct();
 
     // Clock and reset signals
     logic aclk = 1'b0;
-    logic arstn = 1'b0;
+    logic arstn = 1'b0; // Active-Low System Reset (0 = Reset)
+    logic reset_en;     // Active-High Internal Reset (1 = Reset)
+    
+    // Create the Active-High reset from the Active-Low input
+    assign reset_en = ~arstn;
     
     // VGA timing signals (Testbench generated)
     logic [9:0] drawX = 10'd0;
@@ -27,8 +31,6 @@ module framebuffer_tb_direct();
     logic [7:0] fb_doutb;
     
     // BMP writer related signals    
-    // We use the 640x480 resolution (from your first post's timing constants) 
-    // to match the 320x240 half-resolution framebuffer size.
     localparam H_DISPLAY = 640;
     localparam V_DISPLAY = 480;
     localparam BMP_WIDTH  = H_DISPLAY;
@@ -37,7 +39,6 @@ module framebuffer_tb_direct();
     integer i, j;
 
     // 1. Instantiate the framebuffer directly (The DUT)
-    // Assuming the interface is: .clk, .wea, .addra, .dina, .addrb, .doutb
     framebuffer fb_inst (
         .clk(aclk),
         .wea(fb_wea),
@@ -47,19 +48,14 @@ module framebuffer_tb_direct();
         .doutb(fb_doutb)
     );
     
-    // 2. Simulate the read-side logic (This is the logic that was inside your AXI IP)
-    // Framebuffer is 320x240, read at 640x480 resolution (pixel doubling is implied by address scaling)
-    // The framebuffer address is (Y * 320) + X. 
-    // We use the VGA controller's pixel coordinates (drawX, drawY) but only use the most significant bits (halved) 
-    // to address the 320x240 framebuffer.
+    // 2. Simulate the read-side logic (RGB 332 format: R[7:5], G[4:2], B[1:0])
+    // Framebuffer is 320x240, read at 640x480 (pixel doubling implied by address scaling)
     assign fb_addrb = (drawY >> 1) * 320 + (drawX >> 1);
     
-    // Color Decode Logic (RGB 332 format: R[7:5], G[4:2], B[1:0])
     logic [7:0] pixel_data;
     assign pixel_data = fb_doutb;
     
     logic [3:0] r, g, b;
-    // Extract 3 bits for R, 3 for G, 2 for B, and pad to 4-bit output
     assign r = {pixel_data[7:5], 1'b0};
     assign g = {pixel_data[4:2], 1'b0};
     assign b = {pixel_data[1:0], 2'b0};
@@ -79,7 +75,7 @@ module framebuffer_tb_direct();
     end
     
     always begin : PIXEL_CLOCK_GENERATION
-        #20 pixel_clk = ~pixel_clk;  // 25MHz pixel clock (40ns period)
+        #20 pixel_clk = ~pixel_clk;  // 25MHz pixel clock
     end
 
     // --- VGA Timing Generator (640x480 @ 60Hz) ---
@@ -97,7 +93,8 @@ module framebuffer_tb_direct();
     logic [9:0] v_counter = 10'd0;
     
     always @(posedge pixel_clk) begin
-        if (!arstn) begin
+        // The correction is here: check the active-high reset signal
+        if (reset_en) begin
             h_counter <= 10'd0;
             v_counter <= 10'd0;
             pixel_hs <= 1'b0;
@@ -136,7 +133,7 @@ module framebuffer_tb_direct();
         end
     end
 
-    // --- BMP writing task (Copied from original, using BMP_WIDTH/HEIGHT) ---
+    // --- BMP writing task (Unchanged) ---
     task save_bmp(string bmp_file_name);
         begin
             integer unsigned fout_bmp_pointer, BMP_file_size, BMP_row_size, r;
@@ -176,25 +173,19 @@ module framebuffer_tb_direct();
     
     // --- Capture pixels to bitmap ---
     always @(posedge pixel_clk) begin
-        if (!arstn) begin
+        if (reset_en) begin
             for (j = 0; j < BMP_HEIGHT; j++)
                 for (i = 0; i < BMP_WIDTH; i++)
                     bitmap[i][j] <= 24'h000040; // Dark Blue background
         end else if (pixel_vde) begin
-            // Scale 4-bit RGB (R4G4B4) to 8-bit per channel (R8G8B8) for BMP
-            // The R, G, B signals are 4 bits: {R[3:0], G[3:0], B[3:0]}.
-            // R = {red[3:0], red[3:0]} is a common way to scale 4-bit to 8-bit.
+            // Scale 4-bit (R4G4B4) to 8-bit per channel (R8G8B8) for BMP
             bitmap[drawX][drawY] <= {red, red[3:0], green, green[3:0], blue, blue[3:0]};
         end
     end
 
     // --- Direct Write Tasks (Write-Side of Framebuffer) ---
-    // Framebuffer is 320x240, addressed 0 to (320*240 - 1)
-    
-    // Task to write a pixel to framebuffer (RGB332 format)
     task write_pixel(input int x, input int y, input logic [7:0] color);
         begin
-            // Ensure coordinates are within the 320x240 buffer size
             if (x < 320 && y < 240) begin
                 @(posedge aclk);
                 fb_wea = 1'b1;
@@ -206,18 +197,16 @@ module framebuffer_tb_direct();
         end
     endtask
     
-    // Task to draw a filled rectangle
     task draw_rect(input int x0, input int y0, input int w, input int h, input logic [7:0] color);
         begin
             for (int y = y0; y < y0 + h; y++) begin
                 for (int x = x0; x < x0 + w; x++) begin
-                    write_pixel(x, y, color); // Range check is inside write_pixel
+                    write_pixel(x, y, color); 
                 end
             end
         end
     endtask
     
-    // Function to convert RGB888 (input) to RGB332 (output)
     function logic [7:0] rgb332(input logic [7:0] r, input logic [7:0] g, input logic [7:0] b);
         return {r[7:5], g[7:5], b[7:6]};
     endfunction
@@ -228,20 +217,16 @@ module framebuffer_tb_direct();
         fb_addra = 17'd0;
         fb_dina = 8'd0;
         
-        // Assert and release reset
+        // Assert reset (arstn = 0)
         arstn = 1'b0;
         repeat (10) @(posedge aclk);
+        // Release reset (arstn = 1)
         arstn <= 1'b1;
         
         $display("Starting framebuffer test...");
         
-        // Clear screen to dark blue (via write_pixel task, which is clocked by aclk)
-        $display("Clearing screen...");
-        draw_rect(0, 0, 320, 240, rgb332(8'h00, 8'h00, 8'h40));
-        
-        // Draw some test patterns (uses full-brightness 8-bit colors)
-        $display("Drawing test patterns...");
-        
+        // Draw the test patterns...
+        draw_rect(0, 0, 320, 240, rgb332(8'h00, 8'h00, 8'h40)); // Dark Blue
         draw_rect(10, 10, 50, 30, rgb332(8'hFF, 8'h00, 8'h00));   // Red
         draw_rect(70, 10, 50, 30, rgb332(8'h00, 8'hFF, 8'h00));   // Green
         draw_rect(130, 10, 50, 30, rgb332(8'h00, 8'h00, 8'hFF));  // Blue
@@ -250,19 +235,17 @@ module framebuffer_tb_direct();
         draw_rect(130, 50, 50, 30, rgb332(8'hFF, 8'h00, 8'hFF));  // Magenta
         draw_rect(10, 90, 50, 30, rgb332(8'hFF, 8'hFF, 8'hFF));   // White
         
-        // Gradient bar
         for (int x = 0; x < 320; x++) begin
             logic [7:0] gray = x * 255 / 320;
             draw_rect(x, 130, 1, 20, rgb332(gray, gray, gray));
         end
         
-        // Checkerboard pattern
         for (int y = 160; y < 230; y++) begin
             for (int x = 10; x < 150; x++) begin
                 if (((x / 10) + (y / 10)) % 2 == 0)
-                    write_pixel(x, y, rgb332(8'hFF, 8'hFF, 8'hFF)); // White
+                    write_pixel(x, y, rgb332(8'hFF, 8'hFF, 8'hFF)); 
                 else
-                    write_pixel(x, y, rgb332(8'h00, 8'h00, 8'h00)); // Black
+                    write_pixel(x, y, rgb332(8'h00, 8'h00, 8'h00));
             end
         end
         

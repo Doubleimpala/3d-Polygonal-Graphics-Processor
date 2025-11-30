@@ -63,10 +63,6 @@ logic locked;
 logic [3:0] red, green, blue;
 logic reset_ah;
 
-
-
-logic [10:0] color_rom_addr;
-logic [7:0] color_rom_data;
 logic [11:0] vram_addr;
 logic [31:0] vram_data;
 
@@ -102,8 +98,6 @@ hdmi_text_controller_v1_0_AXI # (
     .vsync(vsync),
     .drawX(drawX),
     .drawY(drawY),
-    .color_rom_addr(color_rom_addr),
-    .color_rom_data(color_rom_data),
     .red(red),
     .green(green),
     .blue(blue)
