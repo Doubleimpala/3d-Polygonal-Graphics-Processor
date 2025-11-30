@@ -73,8 +73,6 @@ logic [31:0] vram_data;
 assign reset_ah = ~axi_aresetn;
 
 
-
-
 // Instantiation of Axi Bus Interface AXI
 hdmi_text_controller_v1_0_AXI # ( 
     .C_S_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),

@@ -1,1 +1,276 @@
-`timescale 1ns/1s
+`define SIM_VIDEO // Uncomment to simulate entire screen and write BMP
+
+module framebuffer_tb();
+
+    // Clock and reset signals
+    logic aclk = 1'b0;
+    logic arstn = 1'b0;
+    
+    // VGA timing signals (we'll generate these)
+    logic [9:0] drawX = 10'd0;
+    logic [9:0] drawY = 10'd0;
+    logic pixel_clk = 1'b0;
+    logic pixel_hs = 1'b0;
+    logic pixel_vs = 1'b1;
+    logic pixel_vde = 1'b0;
+    
+    // Output RGB from your design
+    logic [3:0] red, green, blue;
+    
+    // Direct framebuffer access signals
+    logic fb_wea;
+    logic [16:0] fb_addra;
+    logic [7:0] fb_dina;
+    logic [16:0] fb_addrb;
+    logic [7:0] fb_doutb;
+    
+    // BMP writer related signals    
+    localparam BMP_WIDTH  = 640;
+    localparam BMP_HEIGHT = 480;
+    logic [23:0] bitmap [BMP_WIDTH][BMP_HEIGHT];
+    integer i, j;
+
+    // Instantiate your framebuffer directly
+    framebuffer fb_inst (
+        .clk(aclk),
+        .wea(fb_wea),
+        .addra(fb_addra),
+        .dina(fb_dina),
+        .addrb(fb_addrb),
+        .doutb(fb_doutb)
+    );
+    
+    // Simulate the read-side logic from your AXI module
+    assign fb_addrb = drawY * 320 + drawX;
+    
+    logic [7:0] pixel_data;
+    assign pixel_data = fb_doutb;
+    
+    logic [3:0] r, g, b;
+    assign r = {pixel_data[7:5], 1'b0};
+    assign g = {pixel_data[4:2], 1'b0};
+    assign b = {pixel_data[1:0], 2'b0};
+    
+    assign red = r;
+    assign green = g;
+    assign blue = b;
+
+    // Clock generation
+    initial begin: CLOCK_INITIALIZATION
+        aclk = 1'b0;
+        pixel_clk = 1'b0;
+    end 
+       
+    always begin : CLOCK_GENERATION
+        #5 aclk = ~aclk;  // 100MHz system clock
+    end
+    
+    always begin : PIXEL_CLOCK_GENERATION
+        #20 pixel_clk = ~pixel_clk;  // 25MHz pixel clock
+    end
+
+    // VGA timing generator (640x480 @ 60Hz)
+    // This simulates what your VGA controller would produce
+    localparam H_DISPLAY = 640;
+    localparam H_FRONT = 16;
+    localparam H_SYNC = 96;
+    localparam H_BACK = 48;
+    localparam H_TOTAL = H_DISPLAY + H_FRONT + H_SYNC + H_BACK; // 800
+    
+    localparam V_DISPLAY = 480;
+    localparam V_FRONT = 10;
+    localparam V_SYNC = 2;
+    localparam V_BACK = 33;
+    localparam V_TOTAL = V_DISPLAY + V_FRONT + V_SYNC + V_BACK; // 525
+    
+    logic [9:0] h_counter = 10'd0;
+    logic [9:0] v_counter = 10'd0;
+    
+    always @(posedge pixel_clk) begin
+        if (!arstn) begin
+            h_counter <= 10'd0;
+            v_counter <= 10'd0;
+        end else begin
+            // Horizontal counter
+            if (h_counter == H_TOTAL - 1) begin
+                h_counter <= 10'd0;
+                // Vertical counter
+                if (v_counter == V_TOTAL - 1)
+                    v_counter <= 10'd0;
+                else
+                    v_counter <= v_counter + 1;
+            end else begin
+                h_counter <= h_counter + 1;
+            end
+        end
+    end
+    
+    // Generate timing signals
+    always_comb begin
+        pixel_hs = (h_counter >= (H_DISPLAY + H_FRONT)) && 
+                   (h_counter < (H_DISPLAY + H_FRONT + H_SYNC));
+        pixel_vs = (v_counter >= (V_DISPLAY + V_FRONT)) && 
+                   (v_counter < (V_DISPLAY + V_FRONT + V_SYNC));
+        pixel_vde = (h_counter < H_DISPLAY) && (v_counter < V_DISPLAY);
+        
+        if (pixel_vde) begin
+            drawX = h_counter;
+            drawY = v_counter;
+        end else begin
+            drawX = 10'd0;
+            drawY = 10'd0;
+        end
+    end
+
+    // BMP writing task
+    task save_bmp(string bmp_file_name);
+        begin
+            integer unsigned fout_bmp_pointer, BMP_file_size, BMP_row_size, r;
+            logic unsigned [31:0] BMP_header[0:12];
+        
+            BMP_row_size = 32'(BMP_WIDTH * 3) & 32'hFFFC;
+            if (((BMP_WIDTH * 3) & 32'd3) != 0) BMP_row_size = BMP_row_size + 4;
+    
+            fout_bmp_pointer = $fopen(bmp_file_name, "wb");
+            if (fout_bmp_pointer == 0) begin
+                $display("Could not open file '%s' for writing", bmp_file_name);
+                $stop;     
+            end
+            $display("Saving bitmap '%s'.", bmp_file_name);
+       
+            BMP_header[0:12] = '{BMP_file_size, 0, 0054, 40, BMP_WIDTH, BMP_HEIGHT, 
+                               {16'd24, 16'd1}, 0, (BMP_row_size * BMP_HEIGHT), 
+                               2835, 2835, 0, 0};
+        
+            // Write header out      
+            $fwrite(fout_bmp_pointer, "BM");
+            for (int i = 0; i < 13; i++) 
+                $fwrite(fout_bmp_pointer, "%c%c%c%c", 
+                       BMP_header[i][7:0], BMP_header[i][15:8], 
+                       BMP_header[i][23:16], BMP_header[i][31:24]);
+        
+            // Write image out (note that image is flipped in Y)
+            for (int y = BMP_HEIGHT - 1; y >= 0; y--) begin
+                for (int x = 0; x < BMP_WIDTH; x++)
+                    $fwrite(fout_bmp_pointer, "%c%c%c", 
+                           bitmap[x][y][23:16], bitmap[x][y][15:8], bitmap[x][y][7:0]);
+            end
+    
+            $fclose(fout_bmp_pointer);
+        end
+    endtask
+    
+    // Capture pixels to bitmap
+    always @(posedge pixel_clk) begin
+        if (!arstn) begin
+            for (j = 0; j < BMP_HEIGHT; j++)
+                for (i = 0; i < BMP_WIDTH; i++)
+                    bitmap[i][j] <= 24'h7f7f7f; // Gray background
+        end else if (pixel_vde) begin
+            // Scale 4-bit RGB to 8-bit for BMP
+            bitmap[drawX][drawY] <= {red, 4'h0, green, 4'h0, blue, 4'h0};
+        end
+    end
+
+    // Task to write a pixel to framebuffer (RGB332 format)
+    task write_pixel(input int x, input int y, input logic [7:0] color);
+        begin
+            @(posedge aclk);
+            fb_wea = 1'b1;
+            fb_addra = y * 320 + x;
+            fb_dina = color;
+            @(posedge aclk);
+            fb_wea = 1'b0;
+        end
+    endtask
+    
+    // Task to draw a filled rectangle
+    task draw_rect(input int x0, input int y0, input int w, input int h, input logic [7:0] color);
+        begin
+            for (int y = y0; y < y0 + h; y++) begin
+                for (int x = x0; x < x0 + w; x++) begin
+                    if (x < 320 && y < 240)  // Half resolution
+                        write_pixel(x, y, color);
+                end
+            end
+        end
+    endtask
+    
+    // Function to convert RGB888 to RGB332
+    function logic [7:0] rgb332(input logic [7:0] r, input logic [7:0] g, input logic [7:0] b);
+        return {r[7:5], g[7:5], b[7:6]};
+    endfunction
+
+    // Main test sequence
+    initial begin: TEST_VECTORS
+        fb_wea = 1'b0;
+        fb_addra = 17'd0;
+        fb_dina = 8'd0;
+        
+        arstn = 1'b0;
+        repeat (10) @(posedge aclk);
+        arstn <= 1'b1;
+        
+        $display("Starting framebuffer test...");
+        
+        // Clear screen to dark blue
+        $display("Clearing screen...");
+        draw_rect(0, 0, 320, 240, rgb332(8'h00, 8'h00, 8'h40));
+        
+        // Draw some test patterns
+        $display("Drawing test patterns...");
+        
+        // Red rectangle
+        draw_rect(10, 10, 50, 30, rgb332(8'hFF, 8'h00, 8'h00));
+        
+        // Green rectangle
+        draw_rect(70, 10, 50, 30, rgb332(8'h00, 8'hFF, 8'h00));
+        
+        // Blue rectangle  
+        draw_rect(130, 10, 50, 30, rgb332(8'h00, 8'h00, 8'hFF));
+        
+        // Yellow rectangle
+        draw_rect(10, 50, 50, 30, rgb332(8'hFF, 8'hFF, 8'h00));
+        
+        // Cyan rectangle
+        draw_rect(70, 50, 50, 30, rgb332(8'h00, 8'hFF, 8'hFF));
+        
+        // Magenta rectangle
+        draw_rect(130, 50, 50, 30, rgb332(8'hFF, 8'h00, 8'hFF));
+        
+        // White rectangle
+        draw_rect(10, 90, 50, 30, rgb332(8'hFF, 8'hFF, 8'hFF));
+        
+        // Gradient bar
+        for (int x = 0; x < 320; x++) begin
+            logic [7:0] gray = x * 255 / 320;
+            draw_rect(x, 130, 1, 20, rgb332(gray, gray, gray));
+        end
+        
+        // Checkerboard pattern
+        for (int y = 160; y < 230; y++) begin
+            for (int x = 10; x < 150; x++) begin
+                if (((x / 10) + (y / 10)) % 2 == 0)
+                    write_pixel(x, y, rgb332(8'hFF, 8'hFF, 8'hFF));
+                else
+                    write_pixel(x, y, rgb332(8'h00, 8'h00, 8'h00));
+            end
+        end
+        
+        $display("Finished drawing. Waiting for frame to complete...");
+        
+        // Wait for a complete frame to be displayed
+        `ifdef SIM_VIDEO
+        wait(~pixel_vs);  // Wait for vsync to go low (start of frame)
+        wait(pixel_vs);   // Wait for vsync to go high (frame complete)
+        wait(~pixel_vs);  // Wait for next frame
+        
+        $display("Saving BMP...");
+        save_bmp("framebuffer_test.bmp");
+        `endif
+        
+        $display("Test complete!");
+        $finish();
+    end
+
+endmodule
