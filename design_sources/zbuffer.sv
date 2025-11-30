@@ -3,9 +3,9 @@
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/visibility-problem-depth-buffer-depth-interpolation.html
 module zbuffer(
     input logic clk,
-    input logic draw_x,
-    input logic draw_y,
-    input logic [7:0] z, // Only 8 bits right?
+    input logic [9:0] draw_x,
+    input logic [9:0] draw_y,
+    input logic [31:0] z,
 
     output logic draw
 );
