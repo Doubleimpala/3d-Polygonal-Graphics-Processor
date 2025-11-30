@@ -90,6 +90,11 @@ module framebuffer_tb();
         if (!arstn) begin
             h_counter <= 10'd0;
             v_counter <= 10'd0;
+            pixel_hs <= 1'b0;
+            pixel_vs <= 1'b0;
+            pixel_vde <= 1'b0;
+            drawX <= 10'd0;
+            drawY <= 10'd0;
         end else begin
             // Horizontal counter
             if (h_counter == H_TOTAL - 1) begin
@@ -102,23 +107,21 @@ module framebuffer_tb();
             end else begin
                 h_counter <= h_counter + 1;
             end
-        end
-    end
-    
-    // Generate timing signals
-    always_comb begin
-        pixel_hs = (h_counter >= (H_DISPLAY + H_FRONT)) && 
-                   (h_counter < (H_DISPLAY + H_FRONT + H_SYNC));
-        pixel_vs = (v_counter >= (V_DISPLAY + V_FRONT)) && 
-                   (v_counter < (V_DISPLAY + V_FRONT + V_SYNC));
-        pixel_vde = (h_counter < H_DISPLAY) && (v_counter < V_DISPLAY);
-        
-        if (pixel_vde) begin
-            drawX = h_counter;
-            drawY = v_counter;
-        end else begin
-            drawX = 10'd0;
-            drawY = 10'd0;
+            
+            // Generate timing signals (registered for clean waveforms)
+            pixel_hs <= (h_counter >= (H_DISPLAY + H_FRONT)) && 
+                        (h_counter < (H_DISPLAY + H_FRONT + H_SYNC));
+            pixel_vs <= (v_counter >= (V_DISPLAY + V_FRONT)) && 
+                        (v_counter < (V_DISPLAY + V_FRONT + V_SYNC));
+            pixel_vde <= (h_counter < H_DISPLAY) && (v_counter < V_DISPLAY);
+            
+            if ((h_counter < H_DISPLAY) && (v_counter < V_DISPLAY)) begin
+                drawX <= h_counter;
+                drawY <= v_counter;
+            end else begin
+                drawX <= 10'd0;
+                drawY <= 10'd0;
+            end
         end
     end
 
