@@ -164,8 +164,8 @@ hdmi_text_controller_v1_0_AXI # (
         .TMDS_DATA_N(hdmi_tx_n)
     );
 
-    color_rom color_rom_inst(
-        .addr(color_rom_addr),
-        .data(color_rom_data)
-    );
+    // color_rom color_rom_inst(
+    //     .addr(color_rom_addr),
+    //     .data(color_rom_data)
+    // );
 endmodule
