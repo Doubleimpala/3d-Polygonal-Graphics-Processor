@@ -127,7 +127,7 @@ logic  	axi_rvalid;
 
 
 
-//TODO: DELETE THIS ONCE YOU FINISH FRAME BUFFER TESTBENCH
+//TODO: DELETE THIS logic douta ONCE YOU FINISH FRAME BUFFER TESTBENCH
 logic douta;
 
 // Example-specific design signals
@@ -492,21 +492,42 @@ begin
     end
 end    
 
-// Add user logic here
-
-
-
-//always_ff @(posedge S_AXI_ACLK) begin
-//    if(wcounter == 2'b11 || wcounterreset) wcounter <= 2'b0;
-//    else wcounter <= wcounter + 1;
-//end
-//always_ff @(posedge S_AXI_ACLK) begin
-//    rcounter <= rcounter + 1;
-//end
-
-
-
 //Triangle logic
+//Recieve Triangles into FIFO.
+
+
+
+//Signals for 1 triangle:
+logic [15:0] v1;
+logic [15:0] v2;
+logic [15:0] v3;
+logic [31:0] inv_z;
+//Pop triangles from FIFO
+
+//Calculate Edge equations using vertices, and bounding box.
+logic edge_input_ready;
+
+logic edge_output_ready;
+  //Edge equation coefficients.
+logic a1;
+logic b1;
+logic c1;
+logic a2;
+logic b2;
+logic c2;
+logic a3;
+logic b3;
+logic c3;
+
+logic [8:0] bbxi;
+logic [8:0] bbxf;
+logic [7:0] bbyi;
+logic [7:0] bbyf; 
+
+edge_eq_bb edge_calc(
+ .clk(S_AXI_ACLK),
+ .*
+);
 
 
 //Declaring the zbuffer. Need to connect to rest of logic using z input & output.
@@ -517,6 +538,25 @@ zbuffer zb(
   .z(),
   .draw()
 );
+
+
+logic triangle_data_valid;
+always_ff @(posedge S_AXI_ACLK) begin
+  if(edge_output_ready) triangle_data_valid <= 1;
+
+end
+
+//Scanline sets the GPU side frame buffer.
+always_ff @(posedge S_AXI_ACLK) begin
+  //Check that the edge equations and bounding box are ready.
+  if(edge_output_ready)
+
+  wea <= 'b1;
+  addra <= ;
+  dina <= ;
+end
+
+
 
 //Buffer signals for the GPU side.
 logic wea;
@@ -532,60 +572,33 @@ framebuffer fb(
   .*
 );
 
-// Accessing array of 2d bitmap pointers
-// Lab 7.1
-// row # * numCols + col#
-// numCols = number of bitmap pointers in single row
-// (drawY / 16) * 80 + drawX / 8, cannot do drawY
-// Lab 7.2: Multiply address by 2 since one character every 2 bytes instead of every byte
-//CHANGE
-
-// assign vram_addr = ((drawY >> 4) * 80 + (drawX >> 3)) << 1;
-// assign addrb = vram_addr[C_S_AXI_ADDR_WIDTH - 1 : 2];
-// assign invert_glyph_code = doutb[(vram_addr[1] * 16) + 8 +: 8];
-// assign fg_bg = doutb[(vram_addr[0] * 16) +: 8];
-
-// logic [6:0] glyph;
-// logic invert;
-// assign glyph = invert_glyph_code[6:0];
-// assign invert = invert_glyph_code[7];
-
-// logic [3:0] fg_idx;
-// logic [3:0] bg_idx;
-// assign fg_idx = fg_bg[7:4];
-// assign bg_idx = fg_bg[3:0];
-
-// always_ff @(posedge S_AXI_ACLK) begin
-//         addrb <= vram_addr[16:2];
-//         glyph_code <= doutb[vram_addr[1:0]*8 +: 8];
-// end
 
 
-// font_rom_index = {glyph_code[6:0], DrawY[3:0]}, use glyph_code[7] for invert)
-// Font Rom also little endian, so access with row len - drawx
-//DONT CHANGE
-// assign font_rom_addr = {glyph[6:0], drawY[3:0]};
 
 
+
+
+
+
+//Pixel drawing logic:
+//Calculate address in the frame buffer for the current x and y we are drawing for.
 assign addrb = drawY*320 + drawX;
 
+//Retrieve the data combinationally since our VGA clock is 4x slower (25 MHz vs 100MHz AXI clock)
 logic [7:0] pixel_data;
-
-//DONT CHANGE
 assign pixel_data = doutb;
 
+//Retrieve 8 bit color & resize it to 4 bits, as that's how VGA requires it.
 logic [3:0] r,g,b;
-
 assign r = {pixel_data[7:5],1'b0};
 assign g = {pixel_data[4:2],1'b0};
 assign b = {pixel_data[1:0],2'b0};
 
-
-//DONT CHANGE
+//Set the output colors.
 always_comb begin
   red = r;
   blue = b;
   green = g;
 end
-// User logic ends
+
 endmodule

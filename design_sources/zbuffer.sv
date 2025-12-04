@@ -7,6 +7,22 @@ module zbuffer(
     input logic [9:0] draw_y,
     input logic [31:0] z,
 
+    input logic a1;
+    input logic b1;
+    input logic c1;
+    input logic a2;
+    input logic b2;
+    input logic c2;
+    input logic a3;
+    input logic b3;
+    input logic c3;
+    //Bounding box
+    input logic [8:0] bbxi,
+    input logic [8:0] bbxf,
+    input logic [7:0] bbyi,
+    input logic [7:0] bbyf,
+
+
     output logic draw
 );
 
@@ -31,8 +47,8 @@ assign enb = 'b1;
 assign wea = 'b1;
 assign web = 'b0;
 
-//320 * 240 * 1 B = 76.8 kB
-//width: 8 bits
+// 320 * 240 * 1 B = 76.8 kB
+// width: 8 bits
 // Make sure to initialize each cell to the maximum integer
 // This can either be done once on initialization through vivado
 // with a .mif or .coe file
