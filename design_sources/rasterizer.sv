@@ -1,21 +1,14 @@
 // Z-buffer is per pixel, only part of triangle may be drawn
 // z here is z in screen space (microblaze gives this)
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/visibility-problem-depth-buffer-depth-interpolation.html
-module zbuffer(
+module rasterizer(
     input logic clk,
-    input logic [9:0] draw_x,
-    input logic [9:0] draw_y,
-    input logic [31:0] z,
+    //Inverse area of the triangle from the microblaze.
+    input logic [31:0] inv_area,
 
-    input logic a1;
-    input logic b1;
-    input logic c1;
-    input logic a2;
-    input logic b2;
-    input logic c2;
-    input logic a3;
-    input logic b3;
-    input logic c3;
+    //Edge equation coefficients
+    input logic [8:0] a1, b1, a2, b2, a3, b3;
+    input logic [15:0] c1, c2, c3;
     //Bounding box
     input logic [8:0] bbxi,
     input logic [8:0] bbxf,
@@ -23,7 +16,14 @@ module zbuffer(
     input logic [7:0] bbyf,
 
 
-    output logic draw
+    //Rasterizer handshaking signals
+    input logic rasterizer_start,
+    output logic rasterizer_done,
+    
+    //Frame buffer memory signals
+    output logic write_enable_gpu,
+    output logic [7:0] data_in_gpu,
+    output logic [16:0] addr_gpu
 );
 
 logic vram_clka;

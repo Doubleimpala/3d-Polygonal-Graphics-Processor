@@ -80,19 +80,19 @@ assign bbyf = (temp4 > v3y) ? temp4 : v3y;
 //We will therefore split this into 2 stages & therefore make it a 2 clock cycle process.
 
 //Edge v1 to v2.
-// a1 = v1y - v2y;
-// b1 = v2x - v1x;
-// c1 = v1x*v2y - v2x*v1y;
+// a1 = v1y - v2y, Takes 1 clock cycle. We do it combinationally after latching the inputs.
+// b1 = v2x - v1x, Takes 1 clock cycle. We do it combinationally after latching the inputs.
+// c1 = v1x*v2y - v2x*v1y, Takes 2 clock cycles. We do it in 2 stages & handshake.
 
 // Edge v2 to v3.
-// a2 = v2y - v3y;
-// b2 = v3x - v2x;
-// c2 = v2x*v3y - v3x*v2y;
+// a2 = v2y - v3y, Takes 1 clock cycle. We do it combinationally after latching the inputs.
+// b2 = v3x - v2x, Takes 1 clock cycle. We do it combinationally after latching the inputs.
+// c2 = v2x*v3y - v3x*v2y, Takes 2 clock cycles. We do it in 2 stages & handshake.
 
 // Edge v3 to v1.
-// a3 = v3y - v1y;
-// b3 = v1x - v3x;
-// c3 = v3x*v1y - v1x*v3y;
+// a3 = v3y - v1y, Takes 1 clock cycle. We do it combinationally after latching the inputs.
+// b3 = v1x - v3x, Takes 1 clock cycle. We do it combinationally after latching the inputs.
+// c3 = v3x*v1y - v1x*v3y, Takes 2 clock cycles. We do it in 2 stages & handshake.
 
 
 assign a1 = v1y - v2y;
@@ -107,12 +107,6 @@ assign b3 = v1x - v3x;
 logic signed [15:0] prod1, prod2, prod3, prod4, prod5, prod6;
 //Stage 1: We calculate A & B which are only additions. We also begin our multiplications, which if we use the DSP slices will be done in 1 cycle before the second stage.
 always_ff @(posedge clk) begin
-    // a1 <= v1y - v2y;
-    // b1 <= v2x - v1x;
-    // a2 <= v2y - v3y;
-    // b2 <= v3x - v2x;
-    // a3 <= v3y - v1y;
-    // b3 <= v1x - v3x;
     prod1 <= v1x*v2y;
     prod2 <= v2x*v1y;
     prod3 <= v2x*v3y;

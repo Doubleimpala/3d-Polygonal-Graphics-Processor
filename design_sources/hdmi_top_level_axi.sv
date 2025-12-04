@@ -492,85 +492,10 @@ begin
     end
 end    
 
-//Triangle logic
-//Recieve Triangles into FIFO.
 
 
-//Signals for 1 triangle:
-logic [15:0] v1;
-logic [15:0] v2;
-logic [15:0] v3;
-logic [31:0] inv_z;
-//Pop triangles from FIFO
 
-
-//TODO: EDGE EQ MODULE
-//1. Finish edge equation calculations.
-//2. Finalize timing requirements.
-
-//TODO: ZBUFFER MODULE
-//1. Sort out all inputs & outputs.
-//2. Inside test
-//3. Write zbuffer barycentric coordinates calculations (interpolation)
-//4. Write/Read zbuffer.
-//5. Output should draw or not.
-
-//TODO: PIPELINED CONTROL
-//1. Draw diagram & keep track of timing needs.
-//2. Map out inputs & outputs, create pipeline registers and stages.
-//3. Create control unit and use all premade modules correctly.
-
-//Calculate Edge equations using vertices, and bounding box.
-logic edge_input_ready;
-
-logic edge_output_ready;
-  //Edge equation coefficients.
-logic a1;
-logic b1;
-logic c1;
-logic a2;
-logic b2;
-logic c2;
-logic a3;
-logic b3;
-logic c3;
-
-logic [8:0] bbxi;
-logic [8:0] bbxf;
-logic [7:0] bbyi;
-logic [7:0] bbyf; 
-
-edge_eq_bb edge_calc(
- .clk(S_AXI_ACLK),
- .*
-);
-
-
-//Declaring the zbuffer. Need to connect to rest of logic using z input & output.
-zbuffer zb(
-  .clk(S_AXI_ACLK),
-  .draw_x(drawX),
-  .draw_y(drawY),
-  .z(),
-  .draw()
-);
-
-
-logic triangle_data_valid;
-always_ff @(posedge S_AXI_ACLK) begin
-end
-
-//Scanline sets the GPU side frame buffer.
-always_ff @(posedge S_AXI_ACLK) begin
-  //Check that the edge equations and bounding box are ready.
-  if(edge_output_ready)
-
-  wea <= 'b1;
-  addra <= ;
-  dina <= ;
-end
-
-
+////////////////////BEGIN FRAME BUFFER
 
 //Buffer signals for the GPU side.
 logic wea;
@@ -586,8 +511,90 @@ framebuffer fb(
   .*
 );
 
+////////////////////END FRAME BUFFER
 
 
+//Triangle logic
+
+//Recieve Triangles into FIFO.
+
+
+//Signals for 1 triangle:
+logic [15:0] vertex1;
+logic [15:0] vertex2;
+logic [15:0] vertex3;
+logic [31:0] inv_area;
+//Pop triangles from FIFO
+
+//TODO: RASTERIZER MODULE
+//1. Sort out all inputs & outputs.
+//2. Inside test
+//3. Write zbuffer barycentric coordinates calculations (interpolation)
+//4. Write/Read zbuffer.
+//5. Output should draw or not.
+
+//TODO: PIPELINED CONTROL
+//1. Draw diagram & keep track of timing needs.
+//2. Map out inputs & outputs, create pipeline registers and stages.
+//3. Create control unit and use all premade modules correctly.
+
+//TODO: TRIANGLE FIFO SETUP
+//1. 
+
+//TODO: AXI SETUP
+//1.
+
+
+////////////////////BEGIN EDGES & BOUNDING BOX STAGE (3 clock cycles)
+//Calculate Edge equations using vertices, and bounding box.
+
+//Vertices. I renamed these so that we can differentiate from the ones coming out of the FIFO/AXI. We need these to be 1 triangle at a time in the controller.
+logic [15:0] v1;
+logic [15:0] v2;
+logic [15:0] v3;
+
+//Edge handshaking protocol. We assert edge_start for 1 clock cycle when the data in is valid. We then wait for edge_done before retrieving data and continuing to next stage. Expect a 2 clock cycle latency.
+logic edge_start;
+logic edge_done;
+
+//Edge equation coefficients.
+logic [8:0] a1, b1, a2, b2, a3, b3;
+logic [15:0] c1, c2, c3;
+logic [8:0] bbxi;
+logic [8:0] bbxf;
+logic [7:0] bbyi;
+logic [7:0] bbyf; 
+
+edge_eq_bb edge_calc(
+ .clk(S_AXI_ACLK),
+ .*
+);
+////////////////////END EDGES & BOUNDING BOX STAGE
+
+
+////////////////////BEGIN RASTERIZER STAGE ( clock cycles)
+//Rasterizer handshaking protocol. We assert rasterizer_start for 1 clock cycle when the data in is valid. We then wait for rasterizer_done before retrieving data and continuing to next stage. Expect a  clock cycle latency.
+logic rasterizer_start;
+logic rasterizer_done;
+
+//Memory frame buffer signals
+logic write_enable_gpu;
+logic [7:0] data_in_gpu;
+logic [16:0] addr_gpu;
+assign wea = write_enable_gpu;
+assign dina = data_in_gpu;
+assign addra = addr_gpu;
+
+rasterizer raster(
+  .clk(S_AXI_ACLK),
+  .*
+);
+////////////////////END RASTERIZER STAGE
+
+
+////////////////////BEGIN PIPELINE CONTROLLER
+
+////////////////////END PIPELINE CONTROLLER
 
 
 
