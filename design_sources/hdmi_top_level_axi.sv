@@ -496,13 +496,29 @@ end
 //Recieve Triangles into FIFO.
 
 
-
 //Signals for 1 triangle:
 logic [15:0] v1;
 logic [15:0] v2;
 logic [15:0] v3;
 logic [31:0] inv_z;
 //Pop triangles from FIFO
+
+
+//TODO: EDGE EQ MODULE
+//1. Finish edge equation calculations.
+//2. Finalize timing requirements.
+
+//TODO: ZBUFFER MODULE
+//1. Sort out all inputs & outputs.
+//2. Inside test
+//3. Write zbuffer barycentric coordinates calculations (interpolation)
+//4. Write/Read zbuffer.
+//5. Output should draw or not.
+
+//TODO: PIPELINED CONTROL
+//1. Draw diagram & keep track of timing needs.
+//2. Map out inputs & outputs, create pipeline registers and stages.
+//3. Create control unit and use all premade modules correctly.
 
 //Calculate Edge equations using vertices, and bounding box.
 logic edge_input_ready;
@@ -542,8 +558,6 @@ zbuffer zb(
 
 logic triangle_data_valid;
 always_ff @(posedge S_AXI_ACLK) begin
-  if(edge_output_ready) triangle_data_valid <= 1;
-
 end
 
 //Scanline sets the GPU side frame buffer.
