@@ -9,7 +9,7 @@
 
 // TODO: Have to think about widths throughout
 
-module hdmi_top_level #
+module hdmi_text_controller_v1_0 #
 (
     // Parameters of Axi Slave Bus Interface S00_AXI
     // Modify parameters as necessary for access of full VRAM range

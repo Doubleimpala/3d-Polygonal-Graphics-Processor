@@ -53,7 +53,7 @@ module hdmi_text_controller_v1_0_AXI #
     // Global Clock Signal
     input logic  S_AXI_ACLK,
     // Global Reset Signal. This Signal is Active LOW
-    input logic  S_AXI_ARESETN,
+    input logic  S_AXI_ARESETN
     // Write address (issued by master, acceped by Slave)
     // input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
     // // Write channel Protection type. This signal indicates the
@@ -513,6 +513,7 @@ logic [7:0] bbyf;
 
 edge_eq_bb edge_calc(
  .clk(S_AXI_ACLK),
+ .rst(S_AXI_ARESETN),
  .*
 );
 ////////////////////END EDGES & BOUNDING BOX STAGE
@@ -540,21 +541,21 @@ rasterizer raster(
 
 ////////////////////BEGIN PIPELINE CONTROLLER
 
-//States
-enum logic [3:0] {
+// //States
+// enum logic [3:0] {
 
-}
+// }
 
 
-//State controller
-always_ff @(posedge clk) begin
+// //State controller
+// always_ff @(posedge clk) begin
 
-end
+// end
 
-//Combinational outputs
-always_comb begin
+// //Combinational outputs
+// always_comb begin
   
-end
+// end
 
 ////////////////////END PIPELINE CONTROLLER
 
