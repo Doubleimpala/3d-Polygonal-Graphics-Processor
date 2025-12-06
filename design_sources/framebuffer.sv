@@ -16,6 +16,12 @@ module framebuffer#(
 );
 logic front;
 logic prev_vsync_sync;
+logic vsync_sync1;
+logic vsync_sync2;
+always_ff @(posedge clk) begin
+    vsync_sync1 <= vsync; // 1st stage
+    vsync_sync2 <= vsync_sync1; // 2nd stage (output is clean)
+end
 
 //Used to prevent clock domain crossing since the memory runs at 100 MHz and vsync is at 25 MHz, causes front to trigger multiple times.
 always_ff @(posedge clk) begin
