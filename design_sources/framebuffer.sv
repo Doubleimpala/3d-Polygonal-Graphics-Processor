@@ -14,13 +14,14 @@ module framebuffer#(
     input logic [ADDR_WIDTH-1:0] addrb,
     output logic [7:0] doutb
 );
+
 logic front;
 logic prev_vsync_sync;
 logic vsync_sync1;
 logic vsync_sync2;
 always_ff @(posedge clk) begin
-    vsync_sync1 <= vsync; // 1st stage
-    vsync_sync2 <= vsync_sync1; // 2nd stage (output is clean)
+    vsync_sync1 <= vsync;
+    vsync_sync2 <= vsync_sync1;
 end
 
 //Used to prevent clock domain crossing since the memory runs at 100 MHz and vsync is at 25 MHz, causes front to trigger multiple times.
