@@ -15,6 +15,10 @@ module rasterizer(
     input logic [7:0] bbyi,
     input logic [7:0] bbyf,
 
+    // Vertex Z coordinates
+    input logic [15:0] z1, z2, z3,
+
+    
 
     //Rasterizer handshaking signals
     input logic rasterizer_start,
@@ -23,9 +27,13 @@ module rasterizer(
     //Frame buffer memory signals
     output logic write_enable_gpu,
     output logic [7:0] data_in_gpu,
-    output logic [16:0] addr_gpu
+    output logic [16:0] addr_gpu    
 );
 
+
+
+
+//Zbuffer signals
 logic vram_clka;
 logic vram_clkb;
 logic ena;
@@ -39,6 +47,7 @@ logic [7:0] dinb;
 logic [7:0] douta;
 logic [7:0] doutb; 
 
+//Set default ports.
 assign vram_clka = clk;
 assign vram_clkb = clk;
 assign ena = 'b1;
