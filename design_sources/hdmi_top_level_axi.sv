@@ -565,7 +565,7 @@ rasterizer raster(
 
 //Pixel drawing logic:
 //Calculate address in the frame buffer for the current x and y we are drawing for.
-assign addrb = drawY*320 + drawX;
+assign addrb = drawY[9:1]*320 + drawX[8:1];
 
 //Retrieve the data combinationally since our VGA clock is 4x slower (25 MHz vs 100MHz AXI clock)
 logic [7:0] pixel_data;
