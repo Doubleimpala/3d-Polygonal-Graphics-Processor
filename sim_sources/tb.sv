@@ -74,6 +74,11 @@ module framebuffer_tb();
         .axi_rready(axi_rready)
     );
 
+    logic front;
+    assign front = dut.hdmi_text_controller_v1_0_AXI_inst.fb.front;
+    logic vsync_sync2;
+    assign vsync_sync2 = dut.hdmi_text_controller_v1_0_AXI_inst.fb.vsync_sync2;
+
     // Clock generation - 100MHz
     always #5 aclk = ~aclk;
 

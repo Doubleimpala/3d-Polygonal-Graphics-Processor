@@ -3,6 +3,7 @@ module framebuffer#(
 )(
     input logic clk,
     input logic vsync,
+    input logic rst,
 
     //GPU side
     input logic wea,
@@ -14,30 +15,13 @@ module framebuffer#(
     output logic [7:0] doutb
 );
 
-// logic front;
-// logic prev_vsync;
-// //Here we switch between front and back buffers for every falling edge of vsync.
-// always_ff @(posedge clk) begin
-//     prev_vsync <= vsync;
-//     if (prev_vsync & ~vsync) front <= ~front;
-// end
-
-// Two flip-flop synchronizer chain (for VSYNC from 25MHz to 100MHz domain)
-logic vsync_sync1, vsync_sync2;
-always_ff @(posedge clk) begin
-    vsync_sync1 <= vsync;
-    vsync_sync2 <= vsync_sync1;
-end
-
-// Now use the synchronized signal (vsync_sync2) for buffer swap logic
 logic front;
-logic prev_vsync_sync; // Must use a new 'prev' signal
-
-// Here we switch between front and back buffers for every falling edge of vsync_sync2.
+logic prev_vsync;
+//Here we switch between front and back buffers for every falling edge of vsync.
 always_ff @(posedge clk) begin
-    prev_vsync_sync <= vsync_sync2;
-    // Safely detect the falling edge of the synchronized signal
-    if (prev_vsync_sync & ~vsync_sync2) front <= ~front;
+    if(rst) front <= 0;
+    prev_vsync <= vsync;
+    if (prev_vsync & ~vsync) front <= ~front;
 end
 
 logic frontbuf_ena;

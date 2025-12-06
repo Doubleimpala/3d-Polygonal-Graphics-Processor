@@ -454,6 +454,7 @@ logic [16:0] addrb;
 
 framebuffer fb(
   .clk(S_AXI_ACLK),
+  .rst(S_AXI_ARESETN),
   .*
 );
 
