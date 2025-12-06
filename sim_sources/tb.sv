@@ -198,7 +198,7 @@ module framebuffer_tb();
         
         // Clear screen to dark blue
         $display("Clearing screen to dark blue...");
-        draw_rect(0, 0, 320, 240, rgb332(8'h00, 8'h00, 8'h40));
+        draw_rect(0, 0, 320, 240, rgb332(8'hFF, 8'h00, 8'h00));
         
         // Draw test patterns
         $display("Drawing color bars...");
