@@ -81,100 +81,119 @@ for(integer y = bbyi; y <= bbyf; y++) begin
 end
 */
 
-//PART 1: Setup with the single multiplication for the whole triangle. 2 states. Need to use pipeline registers for DSP multiplication.
+//Pixel positions
+logic [8:0] x;
+logic [7:0] y;
 
-//Stage #1
-//Inputs: a1, a2, a3, b1, b2, b3, bbxi, bbyi
-//Outputs:
-logic [17:0] prod1; // 9 bit * 9 bit
-logic [16:0] prod2; // 9 bit * 8 bit
-logic [17:0] prod3;
-logic [16:0] prod4;
-logic [17:0] prod5;
-logic [16:0] prod6;
-always_ff @(posedge clk) begin
-    prod1 <= a1 * bbxi;
-    prod2 <= b1 * bbyi;
-    prod3 <= a2 * bbxi;
-    prod4 <= b2 * bbyi;
-    prod5 <= a3 * bbxi;
-    prod6 <= b3 * bbyi;
-end
+//Edge Equation Products
+logic signed [17:0] prod1; // 9 bit * 9 bit
+logic signed [16:0] prod2; // 9 bit * 8 bit
+logic signed [17:0] prod3;
+logic signed [16:0] prod4;
+logic signed [17:0] prod5;
+logic signed [16:0] prod6;
 
-//Stage #2
-//Inputs: prod1, prod2,... prod6, c1, c2, c3,
-//Outputs:
-logic [17:0] e1;
-logic [17:0] e2;
-logic [17:0] e3;
-always_ff @(posedge clk) begin
-    e1 <= prod1 + prod2 + c1;
-    e2 <= prod3 + prod4 + c2;
-    e3 <= prod5 + prod6 + c3;
-end
+//Edge equations
+logic signed [17:0] e1;
+logic signed [17:0] e2;
+logic signed [17:0] e3;
 
-//Part 2: Loop
-//Stage #3
-//Inputs: e1, e2, e3
-//Outputs:
-logic [17:0] e1_row_stage2;
-logic [17:0] e2_row_stage2;
-logic [17:0] e3_row_stage2;
-always_ff @(posedge clk) begin
-    e1_row_stage2 <= e1;
-    e2_row_stage2 <= e2;
-    e3_row_stage2 <= e3;
-end
+//Edge equations stored per row.
+logic signed [17:0] e1_row;
+logic signed [17:0] e2_row;
+logic signed [17:0] e3_row;
 
-//Stage #4
-//Inputs: e1_row_stage2, e2_row_stage2, e3_row_stage2, a1, a2, a3
-//Outputs: write_enable_gpu, data_in_gpu, addr_gpu
-logic [17:0] e1_row_stage3;
-logic [17:0] e2_row_stage3;
-logic [17:0] e3_row_stage3;
-always_ff @(posedge clk) begin
-    if(e1_row >= 0 && e2_row >= 0 && e3_row >= 0) begin
-        //Zbuffer work. Should I color or not?
-        //if I should color:...
-    end
-    e1_row <= e1_row + a1;
-    e2_row <= e2_row + a2;
-    e3_row <= e3_row + a3;
-end
+//Barycentric weights for zbuffer.
+logic signed [31:0] w1,w2, w3;
 
-//Stage #5
-//Inputs: e1, e2, e3, b1, b2, b3
-//Outputs: e1, e2, e3
 
-always_ff @(posedge clk) begin
-    e1 <= e1 + b1;
-    e2 <= e2 + b2;
-    e3 <= e3 + b3;
-end
 
-//Pipeline Controller
-logic stage1, stage2, stage3, stage4_1, stage4_2, stage4_3, stage5;
+
+enum logic [3:0] {
+    halt,
+    edge_prods,
+    edge_eqs,
+    row_setup,
+    barycentric,
+    comp_z,
+    buf_addressing,
+    write,
+    col_inc,
+    row_inc,
+    done
+} state;
+
+
 always_ff @(posedge clk) begin
     if(rst) begin
-        stage1 <= 0;
-        stage2 <= 0;
-        stage3 <= 0;
-        stage4_1 <= 0;
-        stage4_2 <= 0;
-        stage4_3 <= 0;
-        stage5 <= 0;
+        state <= halt;
+        rasterizer_done <= 0;
     end else begin
-        stage1 <= rasterizer_start;
-        stage2 <= stage1;
-        stage3 <= stage2;
-        stage4_1 <= stage3;
-        stage4_2 <= stage4_1;
-        stage4_3 <= stage4_2;
-        stage5 <= stage4_3;
-        rasterizer_done <= stage_5;
+        case(state)
+            halt: begin
+                rasterizer_done <= 0;
+                if(rasterizer_start) begin
+                    state <= edge_prods;
+                end
+            end
+            edge_prods: begin
+                prod1 <= a1 * bbxi;
+                prod2 <= b1 * bbyi;
+                prod3 <= a2 * bbxi;
+                prod4 <= b2 * bbyi;
+                prod5 <= a3 * bbxi;
+                prod6 <= b3 * bbyi;
+            end
+            edge_eqs: begin
+                e1 <= prod1 + prod2 + c1;
+                e2 <= prod3 + prod4 + c2;
+                e3 <= prod5 + prod6 + c3;
+            end
+            row_setup: begin
+                e1_row <= e1;
+                e2_row <= e2;
+                e3_row <= e3;
+            end
+            barycentric: begin
+                
+            end
+            comp_z: begin
+                
+            end
+            buf_addressing: begin
+                
+            end
+            write: begin
+                
+            end
+            col_inc: begin
+                if(x == bbxf) begin
+                    x <= 
+                end else begin
+                    x <= x+1;
+                    e1_row <= e1_row + a1;
+                    e2_row <= e2_row + a2;
+                    e3_row <= e3_row + a3;
+                    state <= barycentric;
+                end
+            end
+            row_inc: begin
+                if(y == bbyf) begin
+                    rasterizer_done <= 1;
+                    state <= halt;
+                end else begin
+                    e1 <= e1 + b1;
+                    e2 <= e2 + b2;
+                    e3 <= e3 + b3;
+                    state <= row_setup;
+                end
+            end
+            done: begin
+                
+            end
+        endcase
     end
 end
-
 
 
 // 320 * 240 * 1 B = 76.8 kB
