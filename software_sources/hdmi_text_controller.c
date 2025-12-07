@@ -1,145 +1,161 @@
 /***************************** Include Files *******************************/
 #include "hdmi_text_controller.h"
+#include "sleep.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-#include "sleep.h"
+#include <cstdlib>
+#include <math.h>
 
-/************************** Function Definitions ***************************/
+// TODO: REMOVE (put here to make compiler stop complaining)
+#include <stdbool.h
 
-void paletteTest()
-{
-	textHDMIColorClr();
+// TODO: Maybe unroll and use restrict keyword
+__inline__ void matmul4x4(const float in1[16], const float in2[16], float out_mat[16]) {
+  for (int r = 0; r < 4; r++) {
+    for (int c = 0; c < 4; c++) {
+      float dot = 0.0f;
 
-	for (int i = 0; i < 8; i ++)
-	{
-		char color_string[80];
-		sprintf(color_string, "Foreground: %d background %d", 2*i, 2*i+1);
-		textHDMIDrawColorText (color_string, 0, 2*i, 2*i, 2*i+1);
-		sprintf(color_string, "Foreground: %d background %d", 2*i+1, 2*i);
-		textHDMIDrawColorText (color_string, 40, 2*i, 2*i+1, 2*i);
-	}
-	textHDMIDrawColorText ("The above text should cycle through random colors", 0, 25, 0, 1);
+      for (int k = 0; k < 4; k++) {
+        dot += in1[4 * r + k] * in2[4 * k + c];
+      }
 
-
-	for (int i = 0; i < 10; i++)
-	{
-		sleep_MB (1);
-		for (int j = 0; j < 16; j++)
-			setColorPalette(j, 	rand() % 16, rand() % 16,rand() % 16); //set color 0 to random color;
-
-	}
+      out_mat[4 * r + c] = dot;
+    }
+  }
 }
 
-void textHDMIColorClr()
-{
-	for (int i = 0; i<(ROWS*COLUMNS) * 2; i++)
-	{
-		hdmi_ctrl->VRAM[i] = 0x00;
-	}
+// TODO: Unroll this?
+__inline__ void matvec4x1(const float mat[16], const float vec[4], float *out_vec) {
+  for (int mat_r = 0; mat_r < 4; mat_r++) {
+    float dot = 0.0f;
+
+    for (int mat_c = 0; mat_c < 4; mat_c++) {
+      dot += mat[4 * mat_r + mat_c] * vec[mat_c];
+    }
+
+    out_vec[mat_r] = dot;
+  }
 }
 
-void textHDMIDrawColorText(char* str, int x, int y, uint8_t background, uint8_t foreground)
-{
-	int i = 0;
-	while (str[i]!=0)
-	{
-		hdmi_ctrl->VRAM[(y*COLUMNS + x + i) * 2] = foreground << 4 | background;
-		hdmi_ctrl->VRAM[(y*COLUMNS + x + i) * 2 + 1] = str[i];
-		i++;
-	}
-}
+// TODO: Have to store orientation of camera as well
+int main() {
+  // Yaw is rotation about vertical axis
+  // TODO: Proper initialization values
+  float cam_x = 127.5f, cam_y = 127.5f, cam_z = -50.0f;
+  float yaw = 0; // in radians
 
-void setColorPalette (uint8_t color, uint8_t red, uint8_t green, uint8_t blue)
-{
-	//fill in this function to set the color palette entry <color> to <red>, <green>, <blue> 12-bit color
-}
+  while (1) {
+    // TODO: Keyboard or fpga button control for camera movement
+    // TODO: Consider 16-bit fixed point format
 
-void sleepframe(uint32_t frames)
-{
-	uint32_t last_frame_count = hdmi_ctrl->FRAME_COUNT;
-	while (hdmi_ctrl->FRAME_COUNT < last_frame_count + frames)
-	{}
-}
+    // Calculate Project @ View
+    // One matmul and then one matvec mutiply per vertice
 
+    // ===== VIEW MATRIX =====
+    // View = Translate(-camera_pos) × RotateY(yaw)
+    float cos_yaw = cosf(yaw);
+    float sin_yaw = sinf(yaw);
 
-void textHDMIColorScreenSaver()
-{
+    // Pre-compute translation components
+    float tx = -(cos_yaw * cam_x + sin_yaw * cam_z);
+    float ty = -cam_y;
+    float tz = -(-sin_yaw * cam_x + cos_yaw * cam_z);
+    const float view_mat[16] = {
+      cos_yaw,  0.0f, sin_yaw, tx,
+      0.0f,     1.0f, 0.0f,    ty,
+      -sin_yaw, 0.0f, cos_yaw, tz,
+      0.0f,     0.0f, 0.0f,    1.0f
+    };
 
-	char color_string[80];
-    int fg, bg, x, y;
-	char dvd_string[80];
-	uint8_t old_string[160];
-	int dvd_x = 0;
-	int dvd_y = 0;
-	int dvd_dx = 1;
-	int dvd_dy = 1;
+    // ===== PROJECTION MATRIX (for [0, 1] depth) =====
+    // Pre-computed for:
+    // - FOV: 60 degrees
+    // - Aspect ratio: 320/240 = 4/3
+    // - Near plane: 1.0
+    // - Far plane: 300.0 (to see entire Cornell box at z=0..255)
+    //
+    // Formula:
+    // f = 1/tan(60°/2) = 1/tan(30°) ≈ 1.732
+    // m[0][0] = f/aspect = 1.732 / (4/3) = 1.299
+    // m[1][1] = f = 1.732
+    // m[2][2] = far/(far-near) = 300/(300-1) ≈ 1.003
+    // m[2][3] = -(far*near)/(far-near) = -300*1/299 ≈ -1.003
+    // m[3][2] = 1.0 (for [0,1] depth, not -1.0)
+    const float proj_mat[16] = {
+      1.299f,  0.0f,   0.0f,    0.0f,
+      0.0f,    1.732f, 0.0f,    0.0f,
+      0.0f,    0.0f,   1.003f, -1.003f,
+      0.0f,    0.0f,   1.0f,    0.0f
+    };
 
-	int8_t dvd_colors[3] = {0x07, 0x07, 0x07};
-	int8_t dvd_d_colors[3] = {-1, +1, -1};
+    float proj_view_mat[16];
+    matmul4x4(proj_mat, view_mat, proj_view_mat);
 
-	paletteTest();
-	textHDMIColorClr();
+    // TODO: Look into culling (frustram, backface, occlusion, etc.)
+    for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
+      float world_vec1[4] = {(float)cornell_box[i][0],
+                            (float)cornell_box[i][1],
+                            (float)cornell_box[i][2], 1.0f};
 
-	memset(old_string, 0, sizeof(old_string));
-	sprintf(dvd_string, "%s and %s completed ECE 385!", STUDENT1NETID, STUDENT2NETID);
+      float world_vec2[4] = {(float)cornell_box[i][3],
+                            (float)cornell_box[i][4],
+                            (float)cornell_box[i][5], 1.0f};
 
-	//initialize palette
-	for (int i = 0; i < 16; i++)
-	{
-		setColorPalette (i, colors[i].red, colors[i].green, colors[i].blue);
-	}
-	while (1)
-	{
-		if (hdmi_ctrl->FRAME_COUNT % 10 == 0) //every 10 frames update forground
-		{
-			//restore VRAM bytes into background to undo 'DVD' text
-			memcpy(&(hdmi_ctrl->VRAM[(dvd_y*COLUMNS + dvd_x) * 2]), old_string, strlen(dvd_string)*2);
+      float world_vec3[4] = {(float)cornell_box[i][6],
+                            (float)cornell_box[i][7],
+                            (float)cornell_box[i][8], 1.0f};
+      float vec1[4], vec2[4], vec3[4];
 
-			if ( (dvd_x + dvd_dx >= 80-strlen(dvd_string)) || (dvd_x + dvd_dx < 0)) //check X bound
-				dvd_dx = -1*dvd_dx;
-			if ( (dvd_y + dvd_dy >= 30) || (dvd_y + dvd_dy < 0)) //check Y bound
-				dvd_dy = -1*dvd_dy;
-			dvd_x += dvd_dx;
-			dvd_y += dvd_dy;
+      // Transforms to clip space (before perspective divide)
+      matvec4x1(proj_view_mat, world_vec1, vec1);
+      matvec4x1(proj_view_mat, world_vec2, vec2);
+      matvec4x1(proj_view_mat, world_vec3, vec3);
 
-			//store VRAM bytes into buffer before overwriting with 'DVD' text.
-			memcpy(old_string, &(hdmi_ctrl->VRAM[(dvd_y*COLUMNS + dvd_x) * 2]), strlen(dvd_string)*2);
-			textHDMIDrawColorText (dvd_string, dvd_x, dvd_y, 0, (rand() % 7) + 9);
-		}
+      // Test if ALL vertices are outside the SAME frustum plane
+      int8_t all_left =
+          (vec1[0] < -vec1[3] && vec2[0] < -vec2[3] && vec3[0] < -vec3[3]);
+      int8_t all_right =
+          (vec1[0] > vec1[3] && vec2[0] > vec2[3] && vec3[0] > vec3[3]);
+      int8_t all_bottom =
+          (vec1[1] < -vec1[3] && vec2[1] < -vec2[3] && vec3[1] < -vec3[3]);
+      int8_t all_top =
+          (vec1[1] > vec1[3] && vec2[1] > vec2[3] && vec3[1] > vec3[3]);
+      int8_t all_near =
+          (vec1[2] < 0 && vec2[2] < 0 && vec3[2] < 0); // (behind camera)
+      int8_t all_far =
+          (vec1[2] > vec1[3] && vec2[2] > vec2[3] && vec3[2] > vec3[3]);
 
-		if (hdmi_ctrl->FRAME_COUNT % 30 == 0) //every 30 frames update background
-			{
-				fg = rand() % 16;
-				bg = rand() % 16;
-				while (fg == bg)
-				{
-					fg = rand() % 16;
-					bg = rand() % 16;
-				}
-				sprintf(color_string, "Drawing %s text with %s background", colors[fg].name, colors[bg].name);
-				x = rand() % (80-strlen(color_string));
-				y = rand() % 30;
+      // Cull this triangle - completely outside frustum
+      if (all_left || all_right || all_bottom || all_top || all_near || all_far)
+        continue;
 
-				textHDMIDrawColorText (color_string, x, y, bg, fg);
-		}
+      // Check for degenerate w
+      if (vec1[3] <= 0.0001f || vec2[3] <= 0.0001f || vec3[3] <= 0.0001f)
+        continue;
 
-		sleepframe(1);//sleep the rest of the frame
-	}
-}
+      data->color = cornell_box[i][9];
+      float* vecs[3] = {vec1, vec2, vec3};
+      for (int i = 0; i < 3; i++) {
+        // Perspective divide
+        vecs[i][0] /= vecs[i][3];
+        vecs[i][1] /= vecs[i][3];
+        vecs[i][2] /= vecs[i][3];
 
-//Call this function for your Week 2 test
-hdmiTestWeek2()
-{
-	paletteTest();
-	printf ("Palette test passed, beginning screensaver loop\n\r");
+        data->vertices[3 * i] = (uint8_t) ((vecs[i][0] + 1.0f) * 160.0f);
+        data->vertices[3 * i + 1] = (uint8_t) ((1.0f - vecs[i][1]) * 120.0f);
+        data->vertices[3 * i + 2] = (uint8_t) (vecs[i][2] * 255.0f);
+      }
 
+      int x1 = data->vertices[0];
+      int y1 = data->vertices[1];
+      int x2 = data->vertices[3];
+      int y2 = data->vertices[4];
+      int x3 = data->vertices[6];
+      int y3 = data->vertices[7];
 
-    textHDMIColorScreenSaver();
-}
-
-
-
-int triangulate(Vertex * polygon) {
-	
+      float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
+      data->r_area = (r_area < 0) ? - r_area : r_area;
+    }
+  }
 }

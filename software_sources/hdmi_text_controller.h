@@ -7,40 +7,65 @@
 #include "xstatus.h"
 #include "xparameters.h"
 
-#define COLUMNS 80
-#define ROWS 30
-#define PALETTE_START 0x2000
-
-// #define STUDENT1NETID "<student1>"
-// #define STUDENT2NETID "<student2>"
-
-struct TEXT_HDMI_STRUCT {
-	uint8_t             VRAM [ROWS*COLUMNS*2]; //Week 2 - extended VRAM
-	uint8_t             padding[PALETTE_START - ROWS * COLUMNS * 2];
-	//uint32_t            palette[256];
-	uint32_t            FRAME_COUNT; //control registers should appear immediately after palette
-	uint32_t            DRAWX;
-	uint32_t            DRAWY;
+struct DATA {
+  uint8_t vertices[9];
+  uint8_t color;
+  float r_area;
 };
 
-struct COLOR{
-	char name [20];
-	uint8_t red;
-	uint8_t green;
-	uint8_t blue;
+//TODO: CHANGE THIS
+static volatile struct DATA* data = XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
+
+
+// Cornell Box Mesh
+// Vertex1, Vertex2, Vertex3, RRRGGGBB
+static const uint8_t cornell_box[][10] = {
+    // Floor (white)
+    {0,0,0,   255,0,0,   255,0,255,   0xFF},
+    {0,0,0,   255,0,255,   0,0,255,   0xFF},
+    // Ceiling (white)
+    {0,255,0,   255,255,255,   255,255,0,   0xFF},
+    {0,255,0,   0,255,255,   255,255,255,   0xFF},
+    // Left wall (red)
+    {0,0,0,   0,0,255,   0,255,255,   0xE0},
+    {0,0,0,   0,255,255,   0,255,0,   0xE0},
+    // Right wall (green)
+    {255,0,0,   255,255,0,   255,255,255,   0x1C},
+    {255,0,0,   255,255,255,   255,0,255,   0x1C},
+    // Back wall (white)
+    {0,0,255,   255,0,255,   255,255,255,   0xFF},
+    {0,0,255,   255,255,255,   0,255,255,   0xFF},
+    // Small cube (white)
+    {51,0,102,   102,0,102,   102,0,153,   0xFF},
+    {51,0,102,   102,0,153,   51,0,153,   0xFF},
+    {51,51,102,  102,51,153,  102,51,102,  0xFF},
+    {51,51,102,  51,51,153,  102,51,153,  0xFF},
+    {51,0,102,   51,51,102,   102,51,102,   0xFF},
+    {51,0,102,   102,51,102,  102,0,102,   0xFF},
+    {51,0,153,   102,0,153,   102,51,153,   0xFF},
+    {51,0,153,   102,51,153,  51,51,153,   0xFF},
+    {51,0,102,   51,0,153,   51,51,153,   0xFF},
+    {51,0,102,   51,51,153,   51,51,102,   0xFF},
+    {102,0,102,   102,51,102,   102,51,153,   0xFF},
+    {102,0,102,   102,51,153,   102,0,153,   0xFF},
+    // Tall cube (white)
+    {153,0,179,   204,0,179,   204,0,230,   0xFF},
+    {153,0,179,   204,0,230,   153,0,230,   0xFF},
+    {153,128,179,  204,128,230,  204,128,179,  0xFF},
+    {153,128,179,  153,128,230,  204,128,230,  0xFF},
+    {153,0,179,   153,128,179,   204,128,179,   0xFF},
+    {153,0,179,   204,128,179,   204,0,179,   0xFF},
+    {153,0,230,   204,0,230,   204,128,230,   0xFF},
+    {153,0,230,   204,128,230,  153,128,230,   0xFF},
+    {153,0,179,   153,0,230,   153,128,230,   0xFF},
+    {153,0,179,   153,128,230,  153,128,179,   0xFF},
+    {204,0,179,   204,128,179,   204,128,230,   0xFF},
+    {204,0,179,   204,128,230,   204,0,230,   0xFF},
 };
+#define cornell_box_triangle_count (sizeof(cornell_box) / sizeof(cornell_box[0]))
 
-
-//you may have to change this line depending on your platform designer
-static volatile struct TEXT_HDMI_STRUCT* hdmi_ctrl = XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
-
-//CGA colors with names
-struct COLOR {
-    const char *name;
-    unsigned char r;
-    unsigned char g;
-    unsigned char b;
-};
+static const int cornell_box_triangle_count =
+    sizeof(cornell_box)/sizeof(cornell_box[0]);
 
 // static struct COLOR pallete[256] = {
 //     {"R0_G0_B0", 0x0, 0x0, 0x0},
@@ -364,19 +389,4 @@ struct COLOR {
  *
  */
  
-
-void textHDMIColorClr();
-void textHDMIDrawColorText(char* str, int x, int y, uint8_t background, uint8_t foreground);
-void setColorPalette (uint8_t color, uint8_t red, uint8_t green, uint8_t blue); //Fill in this code
-void sleepframe(uint32_t frames);
-void paletteTest();
-void textHDMIColorScreenSaver();
-void hdmiTestWeek2(); //call this for your Week 2 demo
-
-
-typedef struct { float x, y, z; float u, v; } Vertex;
-
-//Implement the ear clipping algorithm
-int triangulate(Vertex* polygon);
-
 #endif // HDMI_TEXT_CONTROLLER_H
