@@ -3,11 +3,15 @@
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/visibility-problem-depth-buffer-depth-interpolation.html
 module rasterizer(
     input logic clk,
+    input logic rst,
     //Inverse area of the triangle from the microblaze.
     input logic [31:0] inv_area,
 
+    //Color of triangle
+    input logic [7:0] color,
+
     //Edge equation coefficients
-    input logic [8:0] a1, b1, a2, b2, a3, b3;
+    input logic [8:0] a1, b1, a2, b2, a3, b3,
     input logic [15:0] c1, c2, c3;
     //Bounding box
     input logic [8:0] bbxi,
@@ -25,31 +29,16 @@ module rasterizer(
     //Frame buffer memory signals
     output logic write_enable_gpu,
     output logic [7:0] data_in_gpu,
-    output logic [16:0] addr_gpu    
+    output logic [16:0] addr_gpu,
 );
 
 //Zbuffer signals
-logic vram_clka;
-logic vram_clkb;
-logic ena;
-logic enb;
-logic [3:0] wea;
-logic [3:0] web;
-logic [19:0] addra;
-logic [19:0] addrb;
-logic [7:0] dina; // 9 bits???
-logic [7:0] dinb;
-logic [7:0] douta;
-logic [7:0] doutb; 
-
-//Set default ports.
-assign vram_clka = clk;
-assign vram_clkb = clk;
-assign ena = 'b1;
-assign enb = 'b1;
-// Port A always writes, port B always reads
-assign wea = 'b1;
-assign web = 'b0;
+logic [7:0] zbuf_dout;
+logic [16:0] zbuf_addr;
+logic [7:0] zbuf_din;
+logic zbuf_we;
+logic zbuf_en;
+assign zbuf_en = 1;
 
 //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
 //Very cool stack overflow post saved me from a lot of work!
@@ -86,27 +75,36 @@ logic [8:0] x;
 logic [7:0] y;
 
 //Edge Equation Products
-logic signed [17:0] prod1; // 9 bit * 9 bit
-logic signed [16:0] prod2; // 9 bit * 8 bit
-logic signed [17:0] prod3;
-logic signed [16:0] prod4;
-logic signed [17:0] prod5;
-logic signed [16:0] prod6;
+logic signed [18:0] prod1; // 9 bit * 9 bit
+logic signed [17:0] prod2; // 9 bit * 8 bit
+logic signed [18:0] prod3;
+logic signed [17:0] prod4;
+logic signed [18:0] prod5;
+logic signed [17:0] prod6;
+
 
 //Edge equations
-logic signed [17:0] e1;
-logic signed [17:0] e2;
-logic signed [17:0] e3;
+logic signed [20:0] e1;
+logic signed [20:0] e2;
+logic signed [20:0] e3;
 
 //Edge equations stored per row.
-logic signed [17:0] e1_row;
-logic signed [17:0] e2_row;
-logic signed [17:0] e3_row;
+logic signed [20:0] e1_row;
+logic signed [20:0] e2_row;
+logic signed [20:0] e3_row;
 
 //Barycentric weights for zbuffer.
-logic signed [31:0] w1,w2, w3;
+logic signed [52:0] w1_raw, w2_raw, w3_raw;
+logic signed [28:0] w1,w2, w3;
 
+//Barycentric/z interpolation products.
+logic signed [44:0] prod7;
+logic signed [44:0] prod8;
+logic signed [44:0] prod9;
 
+//Interpolated Z calculations. We only store "z" in the buffer which is the shifted version of "z_calc"
+logic signed [45:0] z_calc;
+logic signed [7:0] z;
 
 
 enum logic [3:0] {
@@ -114,13 +112,15 @@ enum logic [3:0] {
     edge_prods,
     edge_eqs,
     row_setup,
+    inside_check,
     barycentric,
+    barycentric_normalize,
+    comp_z_prods,
     comp_z,
     buf_addressing,
     write,
     col_inc,
-    row_inc,
-    done
+    row_inc
 } state;
 
 
@@ -134,6 +134,8 @@ always_ff @(posedge clk) begin
                 rasterizer_done <= 0;
                 if(rasterizer_start) begin
                     state <= edge_prods;
+                    x <= bbxi;
+                    y <= bbyi;
                 end
             end
             edge_prods: begin
@@ -143,38 +145,82 @@ always_ff @(posedge clk) begin
                 prod4 <= b2 * bbyi;
                 prod5 <= a3 * bbxi;
                 prod6 <= b3 * bbyi;
+                state <= edge_eqs;
             end
             edge_eqs: begin
                 e1 <= prod1 + prod2 + c1;
                 e2 <= prod3 + prod4 + c2;
                 e3 <= prod5 + prod6 + c3;
+                state <= row_setup;
             end
             row_setup: begin
+                x <= bbxi;
                 e1_row <= e1;
                 e2_row <= e2;
                 e3_row <= e3;
+                state <= inside_check;
+            end
+            inside_check: begin
+                //Should it be like this or 1 clock cycle delayed by calculating inside first and then checking for inside?
+                if(e1_row >= 0 && e2_row >= 0 && e3_row >= 0) begin
+                    state <= barycentric;
+                end else begin
+                    state <= col_inc;
+                end
             end
             barycentric: begin
-                
+                w1_raw <= e1_row * inv_area; //Maybe need $signed? Dont see how area could be negative though.
+                w2_raw <= e2_row * inv_area;
+                w3_raw <= e3_row * inv_area;
+                state <= barycentric_normalize;
+            end
+            barycentric_normalize: begin
+                w1 <= w1_raw >>> 24;
+                w2 <= w2_raw >>> 24;
+                w3 <= w3_raw >>> 24;
+                state <= comp_z_prods;
+            end
+            comp_z_prods: begin
+                prod7 <= w1 * z1;
+                prod8 <= w2 * z2;
+                prod9 <= w3 * z3;
+                state <= comp_z;
             end
             comp_z: begin
-                
+                z_calc <= prod7 + prod8 + prod9;
+                state <= buf_addressing;
             end
             buf_addressing: begin
-                
+                //Z_calc is set with non-blocking so z is only available in the next state. Is this right?
+                z <= z_calc[45:38];
+                zbuf_addr <= y*320 + x;
+                addr_gpu <= y*320 + x;
+                state <= write;
             end
             write: begin
-                
+                if(z < zbuf_dout) begin
+                    zbuf_we <= 1;
+                    zbuf_din <= z;
+
+                    write_enable_gpu <= 1;
+                    data_in_gpu <= color;
+                end else begin
+                    zbuf_we <= 0;
+                    write_enable_gpu <= 0;
+                end
+                state <= col_inc;
             end
             col_inc: begin
+                zbuf_we <= 0;
+                write_enable_gpu <= 0;
                 if(x == bbxf) begin
-                    x <= 
+                    state <= row_inc;
                 end else begin
                     x <= x+1;
                     e1_row <= e1_row + a1;
                     e2_row <= e2_row + a2;
                     e3_row <= e3_row + a3;
-                    state <= barycentric;
+                    state <= inside_check;
                 end
             end
             row_inc: begin
@@ -182,19 +228,16 @@ always_ff @(posedge clk) begin
                     rasterizer_done <= 1;
                     state <= halt;
                 end else begin
+                    y <= y+1;
                     e1 <= e1 + b1;
                     e2 <= e2 + b2;
                     e3 <= e3 + b3;
                     state <= row_setup;
                 end
             end
-            done: begin
-                
-            end
         endcase
     end
 end
-
 
 // 320 * 240 * 1 B = 76.8 kB
 // width: 8 bits
@@ -203,17 +246,13 @@ end
 // with a .mif or .coe file
 // OR
 // make our own reset logic
-blk_mem_gen_0 z_buf(
-    .clka(vram_clka),
-    .clkb(vram_clkb),
-    .*
+// & also make it single port.
+blk_mem_gen_1 z_buf(
+    .clka(clk),
+    .addr(zbuf_addr),
+    .din(zbuf_din),
+    .dout(zbuf_dout),
+    .we(zbuf_we),
+    .en(zbuf_en)
 );
-
-// Assumes that memory writes in second half of cycle (after read)
-assign addrb = draw_y * 320 + draw_x;
-assign addra = addrb;
-
-assign draw = z < douta;
-assign dina = draw ? z : douta;
-
 endmodule

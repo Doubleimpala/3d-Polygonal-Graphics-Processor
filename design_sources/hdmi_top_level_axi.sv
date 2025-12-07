@@ -454,7 +454,7 @@ logic [16:0] addrb;
 
 framebuffer fb(
   .clk(S_AXI_ACLK),
-  .rst(S_AXI_ARESETN),
+  .rst(~S_AXI_ARESETN),
   .*
 );
 
@@ -467,18 +467,9 @@ framebuffer fb(
 
 
 //Signals for 1 triangle:
-logic [15:0] vertex1;
-logic [15:0] vertex2;
-logic [15:0] vertex3;
+
 logic [31:0] inv_area;
 //Pop triangles from FIFO
-
-//TODO: RASTERIZER MODULE
-//1. Sort out all inputs & outputs.
-//2. Inside test
-//3. Write zbuffer barycentric coordinates calculations (interpolation)
-//4. Write/Read zbuffer.
-//5. Output should draw or not.
 
 //TODO: PIPELINED CONTROL
 //1. Draw diagram & keep track of timing needs.
@@ -514,7 +505,7 @@ logic [7:0] bbyf;
 
 edge_eq_bb edge_calc(
  .clk(S_AXI_ACLK),
- .rst(S_AXI_ARESETN),
+ .rst(~S_AXI_ARESETN),
  .*
 );
 ////////////////////END EDGES & BOUNDING BOX STAGE
@@ -533,8 +524,15 @@ assign wea = write_enable_gpu;
 assign dina = data_in_gpu;
 assign addra = addr_gpu;
 
+//Triangle Color
+logic [7:0] color;
+
+//Z coordinates
+logic [15:0] z1, z2, z3;
+
 rasterizer raster(
   .clk(S_AXI_ACLK),
+  .rst(~S_AXI_ARESETN),
   .*
 );
 ////////////////////END RASTERIZER STAGE

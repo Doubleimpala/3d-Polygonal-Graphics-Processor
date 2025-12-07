@@ -3,9 +3,8 @@ module edge_eq_bb(
     input logic rst,
 
     //Triangle vertices.
-    input logic [15:0] v1,
-    input logic [15:0] v2,
-    input logic [15:0] v3,
+    input logic signed [8:0] v1x_in, v2x_in, v3x_in,
+    input logic signed [7:0] v1y_in, v2y_in, v3y_in,
 
     //Handshaking signals.
     input logic edge_start,
@@ -13,12 +12,10 @@ module edge_eq_bb(
 
     //Edge equation coefficients.
     //Need to be signed because the coefficients could be negative.
-    output logic signed [8:0] a1,b1,
-    output logic signed [8:0] a2,b2,
-    output logic signed [8:0] a3,b3,
+    output logic signed [9:0] a1,b1,a2,b2,a3,b3,
     
     //These require more bits bc they are products of 8 bit vertices.
-    output logic signed [16:0] c1, c2, c3,
+    output logic signed [17:0] c1, c2, c3,
 
     //Bounding box dimensions.
     //X initial, 9 bit coordinate
@@ -32,28 +29,25 @@ module edge_eq_bb(
 );
 
 //Latch the inputs. Since v1, v2, v3 inputs technically COULD change between the start and when our final output is computed and some things in the design are combinational, we should use latched versions.
-logic [15:0] v1_latched, v2_latched, v3_latched;
 always_ff @(posedge clk) begin
     if(start) begin
-        v1_latched <= v1;
-        v2_latched <= v2;
-        v3_latched <= v3;
+        v1x <= v1x_in;
+        v2x <= v2x_in;
+        v3x <= v3x_in;
+        v1y <= v1y_in;
+        v2y <= v2y_in;
+        v3y <= v3y_in;
     end
 end
 
 //Triangle vertices in x and y.
-logic signed [7:0] v1x, v1y, v2x, v2y, v3x, v3y;
-assign v1x = v1_latched[15:8];
-assign v1y = v1_latched[7:0];
-assign v2x = v2_latched[15:8];
-assign v2y = v2_latched[7:0];
-assign v3x = v3_latched[15:8];
-assign v3y = v3_latched[7:0];
+logic signed [8:0] v1x, v2x, v3x;
+logic signed [7:0] v1y, v2y, v3y;
 
 //Bounding box calculations.
 //All combinational.
-logic signed [7:0] temp1;
-logic signed [7:0] temp2;
+logic signed [8:0] temp1;
+logic signed [8:0] temp2;
 logic signed [7:0] temp3;
 logic signed [7:0] temp4;
 assign temp1 = (v1x < v2x) ? v1x : v2x;
@@ -104,7 +98,7 @@ assign b2 = v3x - v2x;
 assign a3 = v3y - v1y;
 assign b3 = v1x - v3x;
 
-logic signed [15:0] prod1, prod2, prod3, prod4, prod5, prod6;
+logic signed [16:0] prod1, prod2, prod3, prod4, prod5, prod6;
 //Stage 1: We calculate A & B which are only additions. We also begin our multiplications, which if we use the DSP slices will be done in 1 cycle before the second stage.
 always_ff @(posedge clk) begin
     prod1 <= v1x*v2y;
