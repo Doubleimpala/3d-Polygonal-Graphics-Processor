@@ -26,7 +26,7 @@ end
 
 //Used to prevent clock domain crossing since the memory runs at 100 MHz and vsync is at 25 MHz, causes front to trigger multiple times.
 always_ff @(posedge clk) begin
-    if (rst) begin
+    if (~rst) begin
         front           <= 1'b0;
         prev_vsync_sync <= 1'b0;
     end 
