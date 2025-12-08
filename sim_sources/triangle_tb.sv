@@ -57,11 +57,12 @@ module tb_triangle_pipeline();
     assign rasterizer_done = dut.hdmi_text_controller_v1_0_AXI_inst.rasterizer_done;
 
     // =========================================================================
-    // 4. BMP Generation Logic (From your provided code)
+    // 4. BMP Generation Logic (From your provided code) - MINIMAL EDITS
     // =========================================================================
     localparam BMP_WIDTH  = 640;
     localparam BMP_HEIGHT = 480;
-    logic [23:0] bitmap [BMP_WIDTH][BMP_HEIGHT];
+    // Framebuffer is 8-bit RGB332
+    logic [7:0] bitmap [BMP_WIDTH][BMP_HEIGHT];
     integer i, j;
     logic pixel_clk, pixel_vde;
     logic [9:0] drawX, drawY;
@@ -75,19 +76,24 @@ module tb_triangle_pipeline();
     assign green = dut.green;
     assign blue = dut.blue;
 
+    // Capture pixel: convert DUT red[3:0],green[3:0],blue[3:0] -> RGB332 (8-bit)
+    // RGB332 mapping: [7:5]=R (3 bits from red[3:1]), [4:2]=G (3 bits from green[3:1]), [1:0]=B (2 bits from blue[3:2])
     always @(posedge pixel_clk) begin
         if (!arstn) begin
-            for (j = 0; j < BMP_HEIGHT; j++)
-                for (i = 0; i < BMP_WIDTH; i++)
-                    bitmap[i][j] <= 24'h000000; // Black Background
+            for (j = 0; j < BMP_HEIGHT; j = j + 1)
+                for (i = 0; i < BMP_WIDTH; i = i + 1)
+                    bitmap[i][j] <= 8'h00; // Black Background (RGB332=0)
         end else if (pixel_vde) begin
-            bitmap[drawX][drawY] <= {red, 4'h0, green, 4'h0, blue, 4'h0};
+            bitmap[drawX][drawY] <= { red[3:1], green[3:1], blue[3:2] };
         end
     end
 
+    // Save BMP: expand RGB332 -> RGB888 when writing file
     task save_bmp(string bmp_file_name);
         integer unsigned fout, size, row_size;
         logic unsigned [31:0] header[0:12];
+        byte r8, g8, b8;
+        byte c;
         row_size = 32'(BMP_WIDTH * 3) & 32'hFFFC;
         if (((BMP_WIDTH * 3) & 32'd3) != 0) row_size = row_size + 4;
         fout = $fopen(bmp_file_name, "wb");
@@ -97,8 +103,15 @@ module tb_triangle_pipeline();
         $fwrite(fout, "BM");
         for (int k=0; k<13; k++) $fwrite(fout, "%c%c%c%c", header[k][7:0], header[k][15:8], header[k][23:16], header[k][31:24]);
         for (int y=BMP_HEIGHT-1; y>=0; y--)
-            for (int x=0; x<BMP_WIDTH; x++)
-                $fwrite(fout, "%c%c%c", bitmap[x][y][23:16], bitmap[x][y][15:8], bitmap[x][y][7:0]);
+            for (int x=0; x<BMP_WIDTH; x++) begin
+                c = bitmap[x][y];
+                // Expand RGB332 -> RGB888 by simple scaling
+                // r3 = c[7:5], g3 = c[4:2], b2 = c[1:0]
+                r8 = ( (c[7:5] * 255) / 7 );
+                g8 = ( (c[4:2] * 255) / 7 );
+                b8 = ( (c[1:0] * 255) / 3 );
+                $fwrite(fout, "%c%c%c", r8, g8, b8);
+            end
         $fclose(fout);
     endtask
 
@@ -106,26 +119,16 @@ module tb_triangle_pipeline();
     // 5. Tasks for Simulation Control
     // =========================================================================
 
-    // Task to clear the Z-Buffer via backdoor (simulation only)
-    // Assumes the hierarchy: dut -> axi_inst -> raster -> z_buf -> inst -> native_mem_module -> memory
-    // You might need to adjust the path depending on exactly how Vivado synthesizes the BRAM IP
+    // Task to clear the Z-Buffer via backdoor (omitted per request; ignoring loop)
     task clear_z_buffer();
-        $display("Initializing Z-Buffer to 0xFF (Backdoor)...");
-        // Note: In strict Vivado simulation, referencing the BRAM memory array is tricky.
-        // If this crashes, comment it out and we'll rely on correct draw order.
-        // For now, let's assume valid triangles will have Z < 0 (if signed) or Z < uninit.
-        // A safer way without backdoor is to assume standard initialization to 0, 
-        // which means "closest". We need to flip logic or rely on a "clear screen" triangle.
-        
-        // Alternative: We will assume the logic works, but if your screen is black,
-        // it's because Z-buffer is 0 and Z-test failed.
+        $display("clear_z_buffer: omitted in this minimal testbench (simulation only)");
     endtask
 
     // Task to feed a triangle into the pipeline
     task draw_triangle(
-        input logic signed [8:0] x1, input logic signed [7:0] y1,
-        input logic signed [8:0] x2, input logic signed [7:0] y2,
-        input logic signed [8:0] x3, input logic signed [7:0] y3,
+        input logic [8:0] x1, input logic [7:0] y1,
+        input logic [8:0] x2, input logic [7:0] y2,
+        input logic [8:0] x3, input logic [7:0] y3,
         input logic [7:0] color_in,
         input logic [15:0] z1_in, input logic [15:0] z2_in, input logic [15:0] z3_in
     );
@@ -136,21 +139,21 @@ module tb_triangle_pipeline();
         
         begin
             // 1. Calculate Area * 2
-            area_x2 = (x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2));
+            // Note: inputs are unsigned; cast to signed int for area calc to allow negative cross products
+            area_x2 = (int'(x1)*(int'(y2) - int'(y3)) + int'(x2)*(int'(y3) - int'(y1)) + int'(x3)*(int'(y1) - int'(y2)));
             if (area_x2 < 0) area_x2 = -area_x2;
             
             // 2. Calculate Fixed Point Inverse Area (8.24 format)
-            // Value = (1.0 / area_x2) * 2^24
             if (area_x2 == 0) begin
                 $display("Warning: Triangle has 0 area, skipping.");
                 return;
             end
             
             // 2a. Calculate floating point value
-            inv_area_real = (1.0 / real'(area_x2)) * 16777216.0; // 16777216.0 is 2^24
+            inv_area_real = (1.0 / real'(area_x2)) * 16777216.0; // 2^24
             
-            // 2b. FIX: Convert real to 32-bit logic using $unsigned()
-            inv_area_fixed = $unsigned(inv_area_real); // <-- CORRECTED LINE
+            // 2b. Convert real to 32-bit logic using $unsigned()
+            inv_area_fixed = $unsigned(inv_area_real);
             
             $display("Feeding Triangle: (%0d,%0d), (%0d,%0d), (%0d,%0d) Color: %h", x1,y1,x2,y2,x3,y3, color_in);
             // 3. Wait for Controller to be Ready
@@ -202,60 +205,39 @@ module tb_triangle_pipeline();
         wait(dut.locked);
         #1000;
 
-        // NOTE ON Z-BUFFER: 
-        // Since BRAM inits to 0, and we draw if (z < zbuf),
-        // we must draw with Z=0 to overwrite the default, OR we assume
-        // the user has a mechanism to set Z-buf to 0xFF.
-        // For this test, we will use small Z values. 
-        // If your Z-buffer is initialized to 0 by default, only Z=0 will pass.
-        // If you can't see the triangles, check your Z-buffer initialization!
-        for (int i = 0; i < 76800; i++) begin
-            // Access the BRAM memory directly (simulation only)
-            force raster.z_buf.ram[i] = 8'hFF;
-        end
-        #1;
-        release raster.z_buf.ram;
-        
+        // NOTE ON Z-BUFFER: omitted the backdoor clearing per request.
+
         // --- Triangle 1: Red, Background (Z=50) ---
-        // Top Left: 100, 50
-        // Bottom Right: 200, 150
-        // Bottom Left: 100, 150
         draw_triangle(
-            100, 50,    // V1
-            200, 150,   // V2
-            100, 150,   // V3
-            8'hE0,      // Red (RRR GGG BB -> 111 000 00)
-            50, 50, 50  // Z (Flat depth)
+            40, 20,    // V1
+            140, 120,  // V2
+            40, 120,   // V3
+            8'hE0,     // RGB332 = 1110_0000
+            50, 50, 50
         );
 
         // --- Triangle 2: Green, Foreground (Z=10) ---
-        // Overlapping the Red one.
-        // Top Right: 200, 50
-        // Bottom Left: 150, 100
-        // Bottom Right: 250, 100
         draw_triangle(
-            200, 50,     // V1
-            150, 100,    // V2
-            250, 100,    // V3
-            8'h1C,       // Green (RRR GGG BB -> 000 111 00)
-            10, 10, 10   // Z (Closer than red)
+            140, 20,   // V1
+            90, 70,    // V2
+            190, 70,   // V3
+            8'h1C,     // RGB332 = 0001_1100
+            10, 10, 10
         );
         
         // --- Triangle 3: Gradient Z Test ---
-        // A triangle where Z varies.
-        // 50, 200 -> 100, 240 -> 50, 240
         draw_triangle(
-            50, 200,
-            100, 240,
-            50, 240,
-            8'h03,       // Blue
-            10, 100, 10  // Z varies
+            20, 140,
+            70, 200,
+            20, 200,
+            8'h03,    // RGB332 = 0000_0011
+            10, 100, 10
         );
 
         $display("All triangles fed. Waiting for frame VSync...");
 
         // Wait for VSYNC to ensure image is latched to display
-        wait(dut.vsync == 0); // Active Low vsync? Or check signal polarity
+        wait(dut.vsync == 0);
         wait(dut.vsync == 1);
         wait(dut.vsync == 0);
         

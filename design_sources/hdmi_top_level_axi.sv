@@ -467,8 +467,8 @@ framebuffer fb(
 
 
 //Signals for 1 triangle:
-logic signed [8:0] v1x, v2x, v3x;
-logic signed [7:0] v1y, v2y, v3y;
+logic [8:0] v1x, v2x, v3x;
+logic [7:0] v1y, v2y, v3y;
 logic [7:0] color;
 logic [31:0] inv_area;
 
@@ -483,8 +483,8 @@ logic [31:0] inv_area;
 //Calculate Edge equations using vertices, and bounding box.
 
 //Vertices. I renamed these so that we can differentiate from the ones coming out of the FIFO/AXI. We need these to be 1 triangle at a time in the controller.
-logic signed [8:0] v1x_in, v2x_in, v3x_in;
-logic signed [7:0] v1y_in, v2y_in, v3y_in;
+logic [8:0] v1x_in, v2x_in, v3x_in;
+logic [7:0] v1y_in, v2y_in, v3y_in;
 assign v1x_in = v1x;
 assign v2x_in = v2x;
 assign v3x_in = v3x;

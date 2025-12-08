@@ -3,8 +3,8 @@ module edge_eq_bb(
     input logic rst,
 
     //Triangle vertices.
-    input logic signed [8:0] v1x_in, v2x_in, v3x_in,
-    input logic signed [7:0] v1y_in, v2y_in, v3y_in,
+    input logic [8:0] v1x_in, v2x_in, v3x_in,
+    input logic [7:0] v1y_in, v2y_in, v3y_in,
 
     //Handshaking signals.
     input logic edge_start,
@@ -29,8 +29,8 @@ module edge_eq_bb(
 );
 
 //Triangle vertices in x and y.
-logic signed [8:0] v1x, v2x, v3x;
-logic signed [7:0] v1y, v2y, v3y;
+logic [8:0] v1x, v2x, v3x;
+logic [7:0] v1y, v2y, v3y;
 
 //Latch the inputs. Since v1, v2, v3 inputs technically COULD change between the start and when our final output is computed and some things in the design are combinational, we should use latched versions.
 always_ff @(posedge clk) begin
@@ -47,10 +47,10 @@ end
 
 //Bounding box calculations.
 //All combinational.
-logic signed [8:0] temp1;
-logic signed [8:0] temp2;
-logic signed [7:0] temp3;
-logic signed [7:0] temp4;
+logic [8:0] temp1;
+logic [8:0] temp2;
+logic [7:0] temp3;
+logic [7:0] temp4;
 assign temp1 = (v1x < v2x) ? v1x : v2x;
 assign bbxi = (temp1 < v3x) ? temp1 : v3x;
 
@@ -67,7 +67,7 @@ assign bbyf = (temp4 > v3y) ? temp4 : v3y;
 //Edge equation calculations.
 //Edge(x,y) = A*x + B*y + C
 //A = y1-y2 = delta y.
-//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Ask the article I guess ¯\_(ツ)_/¯
+//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Ask the stack overflow I guess ¯\_(ツ)_/¯
 //C = x1*y2 - x2*y1
 //So if Edge(x,y) >= 0 then the pixel is inside. If all 3 edges are >= 0, then we should draw the pixel.
 
