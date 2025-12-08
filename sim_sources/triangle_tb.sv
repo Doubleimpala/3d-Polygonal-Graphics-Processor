@@ -130,14 +130,12 @@ module tb_triangle_pipeline();
         input logic [15:0] z1_in, input logic [15:0] z2_in, input logic [15:0] z3_in
     );
         // Variables for calculation
-        int area_x2;
-        real inv_area_real;
-        logic [31:0] inv_area_fixed;
+        int area_x2;          // Result of the 2*Area cross product
+        real inv_area_real;   // Floating point inverse area
+        logic [31:0] inv_area_fixed; // 32-bit fixed point for hardware (8.24)
         
         begin
             // 1. Calculate Area * 2
-            // Area = 0.5 * |(x1(y2 - y3) + x2(y3 - y1) + x3(y1 - y2))|
-            // We need 2 * Area for the barycentric denominator
             area_x2 = (x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2));
             if (area_x2 < 0) area_x2 = -area_x2;
             
@@ -147,11 +145,14 @@ module tb_triangle_pipeline();
                 $display("Warning: Triangle has 0 area, skipping.");
                 return;
             end
-            inv_area_real = (1.0 / real'(area_x2)) * 16777216.0; // 2^24
-            inv_area_fixed = 32'(inv_area_real);
-
+            
+            // 2a. Calculate floating point value
+            inv_area_real = (1.0 / real'(area_x2)) * 16777216.0; // 16777216.0 is 2^24
+            
+            // 2b. FIX: Convert real to 32-bit logic using $unsigned()
+            inv_area_fixed = $unsigned(inv_area_real); // <-- CORRECTED LINE
+            
             $display("Feeding Triangle: (%0d,%0d), (%0d,%0d), (%0d,%0d) Color: %h", x1,y1,x2,y2,x3,y3, color_in);
-
             // 3. Wait for Controller to be Ready
             wait(dut.hdmi_text_controller_v1_0_AXI_inst.triangle_ready == 1'b1);
             @(posedge aclk);
