@@ -28,6 +28,10 @@ module edge_eq_bb(
     output logic [7:0] bbyf
 );
 
+//Triangle vertices in x and y.
+logic signed [8:0] v1x, v2x, v3x;
+logic signed [7:0] v1y, v2y, v3y;
+
 //Latch the inputs. Since v1, v2, v3 inputs technically COULD change between the start and when our final output is computed and some things in the design are combinational, we should use latched versions.
 always_ff @(posedge clk) begin
     if(edge_start) begin
@@ -40,9 +44,6 @@ always_ff @(posedge clk) begin
     end
 end
 
-//Triangle vertices in x and y.
-logic signed [8:0] v1x, v2x, v3x;
-logic signed [7:0] v1y, v2y, v3y;
 
 //Bounding box calculations.
 //All combinational.

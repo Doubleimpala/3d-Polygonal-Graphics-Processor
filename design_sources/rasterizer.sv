@@ -104,7 +104,7 @@ logic signed [44:0] prod9;
 
 //Interpolated Z calculations. We only store "z" in the buffer which is the shifted version of "z_calc"
 logic signed [45:0] z_calc;
-logic signed [7:0] z;
+logic [7:0] z;
 
 
 enum logic [3:0] {
@@ -141,17 +141,17 @@ always_ff @(posedge clk) begin
             end
             edge_prods: begin
                 prod1 <= $signed(a1) * $signed({1'b0, bbxi});
-                    prod2 <= $signed(b1) * $signed({1'b0, bbyi});
-                    prod3 <= $signed(a2) * $signed({1'b0, bbxi});
-                    prod4 <= $signed(b2) * $signed({1'b0, bbyi});
-                    prod5 <= $signed(a3) * $signed({1'b0, bbxi});
-                    prod6 <= $signed(b3) * $signed({1'b0, bbyi});
+                prod2 <= $signed(b1) * $signed({1'b0, bbyi});
+                prod3 <= $signed(a2) * $signed({1'b0, bbxi});
+                prod4 <= $signed(b2) * $signed({1'b0, bbyi});
+                prod5 <= $signed(a3) * $signed({1'b0, bbxi});
+                prod6 <= $signed(b3) * $signed({1'b0, bbyi});
                 state <= edge_eqs;
             end
             edge_eqs: begin
                 e1 <= $signed(prod1) + $signed(prod2) + $signed(c1);
-                    e2 <= $signed(prod3) + $signed(prod4) + $signed(c2);
-                    e3 <= $signed(prod5) + $signed(prod6) + $signed(c3);
+                e2 <= $signed(prod3) + $signed(prod4) + $signed(c2);
+                e3 <= $signed(prod5) + $signed(prod6) + $signed(c3);
                 state <= row_setup;
             end
             row_setup: begin
@@ -170,9 +170,9 @@ always_ff @(posedge clk) begin
                 end
             end
             barycentric: begin
-                w1_raw <= e1_row * $signed(inv_area);
-                    w2_raw <= e2_row * $signed(inv_area);
-                    w3_raw <= e3_row * $signed(inv_area);
+                w1_raw <= $signed(e1_row) * $signed(inv_area);
+                w2_raw <= $signed(e2_row) * $signed(inv_area);
+                w3_raw <= $signed(e3_row) * $signed(inv_area);
                 state <= barycentric_normalize;
             end
             barycentric_normalize: begin
@@ -182,9 +182,9 @@ always_ff @(posedge clk) begin
                 state <= comp_z_prods;
             end
             comp_z_prods: begin
-                prod7 <= w1 * z1;
-                prod8 <= w2 * z2;
-                prod9 <= w3 * z3;
+                prod7 <= w1 * $signed({1'b0, z1});
+                prod8 <= w2 * $signed({1'b0, z2});
+                prod9 <= w3 * $signed({1'b0, z3});
                 state <= comp_z;
             end
             comp_z: begin
@@ -192,8 +192,7 @@ always_ff @(posedge clk) begin
                 state <= buf_addressing;
             end
             buf_addressing: begin
-                //Z_calc is set with non-blocking so z is only available in the next state. Is this right?
-                z <= z_calc[45:38];
+                z <= z_calc[44:37];
                 zbuf_addr <= y*320 + x;
                 addr_gpu <= y*320 + x;
                 state <= read_zbuf;
