@@ -467,14 +467,10 @@ framebuffer fb(
 
 
 //Signals for 1 triangle:
-
+logic signed [8:0] v1x, v2x, v3x,
+logic signed [7:0] v1y, v2y, v3y,
+logic [7:0] color;
 logic [31:0] inv_area;
-//Pop triangles from FIFO
-
-//TODO: PIPELINED CONTROL
-//1. Draw diagram & keep track of timing needs.
-//2. Map out inputs & outputs, create pipeline registers and stages.
-//3. Create control unit and use all premade modules correctly.
 
 //TODO: TRIANGLE FIFO SETUP
 //1. 
@@ -487,17 +483,21 @@ logic [31:0] inv_area;
 //Calculate Edge equations using vertices, and bounding box.
 
 //Vertices. I renamed these so that we can differentiate from the ones coming out of the FIFO/AXI. We need these to be 1 triangle at a time in the controller.
-logic [15:0] v1;
-logic [15:0] v2;
-logic [15:0] v3;
-
+logic signed [8:0] v1x_in, v2x_in, v3x_in,
+logic signed [7:0] v1y_in, v2y_in, v3y_in,
+assign v1x_in = v1x;
+assign v2x_in = v2x;
+assign v3x_in = v3x;
+assign v1y_in = v1y;
+assign v2y_in = v2y;
+assign v3y_in = v3y;
 //Edge handshaking protocol. We assert edge_start for 1 clock cycle when the data in is valid. We then wait for edge_done before retrieving data and continuing to next stage. Expect a 2 clock cycle latency.
 logic edge_start;
 logic edge_done;
 
 //Edge equation coefficients.
 logic [8:0] a1, b1, a2, b2, a3, b3;
-logic [15:0] c1, c2, c3;
+logic [17:0] c1, c2, c3;
 logic [8:0] bbxi;
 logic [8:0] bbxf;
 logic [7:0] bbyi;
@@ -524,8 +524,7 @@ assign wea = write_enable_gpu;
 assign dina = data_in_gpu;
 assign addra = addr_gpu;
 
-//Triangle Color
-logic [7:0] color;
+
 
 //Z coordinates
 logic [15:0] z1, z2, z3;
@@ -539,22 +538,47 @@ rasterizer raster(
 
 
 ////////////////////BEGIN PIPELINE CONTROLLER
+logic triangle_ready;
+logic triangle_valid;
 
-// //States
-// enum logic [3:0] {
+enum logic [1:0] {
+  wait_tri,
+  calc_edge,
+  rasterize
+} controller_state;
 
-// }
-
-
-// //State controller
-// always_ff @(posedge clk) begin
-
-// end
-
-// //Combinational outputs
-// always_comb begin
-  
-// end
+always_ff @(posedge S_AXI_ACLK) begin
+  if(~S_AXI_ARESETN) begin
+    controller_state <= wait_tri;
+    triangle_ready <= 1;
+    edge_start <= 0;
+    rasterizer_start <= 0;
+  end else begin
+    case(controller_state) 
+      wait_tri: begin
+        if(triangle_ready && triangle_valid) begin
+          edge_start <= 1;
+          triangle_ready <= 0;
+          controller_state <= calc_edge;
+        end
+      end
+      calc_edge: begin
+        edge_start <= 0;
+        if(edge_done) begin
+          rasterizer_start <= 1;
+          controller_state <= rasterize;
+        end
+      end
+      rasterize: begin
+        rasterizer_start <= 0;
+        if(rasterizer_done) begin
+          controller_state <= wait_tri;
+          triangle_ready <= 1;
+        end
+      end
+    endcase
+  end
+end
 
 ////////////////////END PIPELINE CONTROLLER
 

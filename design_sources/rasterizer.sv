@@ -12,7 +12,7 @@ module rasterizer(
 
     //Edge equation coefficients
     input logic [8:0] a1, b1, a2, b2, a3, b3,
-    input logic [15:0] c1, c2, c3;
+    input logic [17:0] c1, c2, c3;
     //Bounding box
     input logic [8:0] bbxi,
     input logic [8:0] bbxf,

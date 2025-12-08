@@ -30,7 +30,7 @@ module edge_eq_bb(
 
 //Latch the inputs. Since v1, v2, v3 inputs technically COULD change between the start and when our final output is computed and some things in the design are combinational, we should use latched versions.
 always_ff @(posedge clk) begin
-    if(start) begin
+    if(edge_start) begin
         v1x <= v1x_in;
         v2x <= v2x_in;
         v3x <= v3x_in;
