@@ -254,10 +254,10 @@ end
 // & also make it single port.
 blk_mem_gen_1 z_buf(
     .clka(clk),
-    .addr(zbuf_addr),
-    .din(zbuf_din),
-    .dout(zbuf_dout),
-    .we(zbuf_we),
-    .en(zbuf_en)
+    .addra(zbuf_addr),
+    .dina(zbuf_din),
+    .douta(zbuf_dout),
+    .wea(zbuf_we),
+    .ena(zbuf_en)
 );
 endmodule

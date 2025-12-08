@@ -106,34 +106,30 @@ blk_mem_gen_0 back_buffer(
 
 always_comb begin
     if(front) begin
+        //front is write buffer
         frontbuf_wea   = wea;
         frontbuf_addra = addra;
         frontbuf_dina  = dina;
-        frontbuf_web   = 0;
-        frontbuf_addrb = 0;
-        frontbuf_dinb  = 0;
-        backbuf_wea    = 0;
-        backbuf_addra  = 0;
-        backbuf_dina   = 0;
-        backbuf_web    = 1'b1;
-        backbuf_addrb  = addrb;
-        backbuf_dinb   = 8'h00;
+        frontbuf_addrb = 'b0;
+
+        // BACK is read buffer
+        backbuf_wea   = 'b0;
+        backbuf_addra = 'b0;
+        backbuf_dina  = 'b0;
+        backbuf_addrb = addrb;
         doutb = backbuf_doutb;
     end else begin
         //back is write buffer
-        backbuf_wea    = wea;
-        backbuf_addra  = addra;
-        backbuf_dina   = dina;
-        backbuf_web    = 0;
-        backbuf_addrb  = 0;
-        backbuf_dinb   = 0;
+        backbuf_wea   = wea;
+        backbuf_addra = addra;
+        backbuf_dina  = dina;
+        backbuf_addrb = 'b0;
 
-        frontbuf_wea   = 0;
-        frontbuf_addra = 0;
-        frontbuf_dina  = 0;
-        frontbuf_web   = 1'b1;
+        // FRONT is read buffer
+        frontbuf_wea   = 'b1;
+        frontbuf_addra = 'b0;
+        frontbuf_dina  = 'b0;
         frontbuf_addrb = addrb;
-        frontbuf_dinb  = 8'h00; 
         doutb = frontbuf_doutb;
     end
 end
