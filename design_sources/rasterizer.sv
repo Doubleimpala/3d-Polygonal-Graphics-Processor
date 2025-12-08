@@ -11,8 +11,8 @@ module rasterizer(
     input logic [7:0] color,
 
     //Edge equation coefficients
-    input logic [8:0] a1, b1, a2, b2, a3, b3,
-    input logic [17:0] c1, c2, c3;
+    input logic signed [8:0] a1, b1, a2, b2, a3, b3,
+    input logic signed [17:0] c1, c2, c3,
     //Bounding box
     input logic [8:0] bbxi,
     input logic [8:0] bbxf,
@@ -29,7 +29,7 @@ module rasterizer(
     //Frame buffer memory signals
     output logic write_enable_gpu,
     output logic [7:0] data_in_gpu,
-    output logic [16:0] addr_gpu,
+    output logic [16:0] addr_gpu
 );
 
 //Zbuffer signals
@@ -118,6 +118,7 @@ enum logic [3:0] {
     comp_z_prods,
     comp_z,
     buf_addressing,
+    read_zbuf,
     write,
     col_inc,
     row_inc
@@ -139,18 +140,18 @@ always_ff @(posedge clk) begin
                 end
             end
             edge_prods: begin
-                prod1 <= a1 * bbxi;
-                prod2 <= b1 * bbyi;
-                prod3 <= a2 * bbxi;
-                prod4 <= b2 * bbyi;
-                prod5 <= a3 * bbxi;
-                prod6 <= b3 * bbyi;
+                prod1 <= $signed(a1) * $signed({1'b0, bbxi});
+                    prod2 <= $signed(b1) * $signed({1'b0, bbyi});
+                    prod3 <= $signed(a2) * $signed({1'b0, bbxi});
+                    prod4 <= $signed(b2) * $signed({1'b0, bbyi});
+                    prod5 <= $signed(a3) * $signed({1'b0, bbxi});
+                    prod6 <= $signed(b3) * $signed({1'b0, bbyi});
                 state <= edge_eqs;
             end
             edge_eqs: begin
-                e1 <= prod1 + prod2 + c1;
-                e2 <= prod3 + prod4 + c2;
-                e3 <= prod5 + prod6 + c3;
+                e1 <= $signed(prod1) + $signed(prod2) + $signed(c1);
+                    e2 <= $signed(prod3) + $signed(prod4) + $signed(c2);
+                    e3 <= $signed(prod5) + $signed(prod6) + $signed(c3);
                 state <= row_setup;
             end
             row_setup: begin
@@ -169,9 +170,9 @@ always_ff @(posedge clk) begin
                 end
             end
             barycentric: begin
-                w1_raw <= e1_row * inv_area; //Maybe need $signed? Dont see how area could be negative though.
-                w2_raw <= e2_row * inv_area;
-                w3_raw <= e3_row * inv_area;
+                w1_raw <= e1_row * $signed(inv_area);
+                    w2_raw <= e2_row * $signed(inv_area);
+                    w3_raw <= e3_row * $signed(inv_area);
                 state <= barycentric_normalize;
             end
             barycentric_normalize: begin
@@ -195,7 +196,11 @@ always_ff @(posedge clk) begin
                 z <= z_calc[45:38];
                 zbuf_addr <= y*320 + x;
                 addr_gpu <= y*320 + x;
-                state <= write;
+                state <= read_zbuf;
+            end
+            read_zbuf: begin
+                // Wait 1 cycle for BRAM to respond
+                state <= write;  // Now zbuf_dout is valid
             end
             write: begin
                 if(z < zbuf_dout) begin

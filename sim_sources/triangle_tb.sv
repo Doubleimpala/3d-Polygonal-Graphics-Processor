@@ -209,6 +209,12 @@ module tb_triangle_pipeline();
         // For this test, we will use small Z values. 
         // If your Z-buffer is initialized to 0 by default, only Z=0 will pass.
         // If you can't see the triangles, check your Z-buffer initialization!
+        for (int i = 0; i < 76800; i++) begin
+            // Access the BRAM memory directly (simulation only)
+            force raster.z_buf.ram[i] = 8'hFF;
+        end
+        #1;
+        release raster.z_buf.ram;
         
         // --- Triangle 1: Red, Background (Z=50) ---
         // Top Left: 100, 50
