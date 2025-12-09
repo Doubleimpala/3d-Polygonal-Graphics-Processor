@@ -230,7 +230,7 @@ module tb_triangle_pipeline();
 
         $display("\n=== Starting Triangle Pipeline Test ===\n");
 
-        // Triangle 1: Red, farther back (Z=50)
+        // Triangle 1: Red (Bottom Left) - Farther Back (Z=50)
         draw_triangle(
             9'd40, 8'd20,    // V1
             9'd140, 8'd120,  // V2
@@ -239,22 +239,44 @@ module tb_triangle_pipeline();
             16'd50, 16'd50, 16'd50
         );
 
-        // Triangle 2: Green, closer (Z=10)
+        // Triangle 2: Green (Top Middle) - Closer (Z=10). **FIXED CW/CCW Winding**
         draw_triangle(
             9'd140, 8'd20,   // V1
-            9'd190, 8'd70,   // V2 (swapped)
-            9'd90, 8'd70,    // V3 (swapped)
-            8'h1C,           // Green
+            9'd190, 8'd70,   // V2 (Swapped from original to fix winding)
+            9'd90, 8'd70,    // V3 (Swapped from original to fix winding)
+            8'h1C,           // Green (RGB332: 000_111_00)
             16'd10, 16'd10, 16'd10
         );
 
-        // Triangle 3: Blue with Z gradient
+        // Triangle 3: Blue (Top Left) - Z Gradient (Z=10 to 100)
         draw_triangle(
             9'd20, 8'd140,
             9'd70, 8'd200,
             9'd20, 8'd200,
             8'h03,           // Blue (RGB332: 000_000_11)
             16'd10, 16'd100, 16'd10
+        );
+        
+        // --- NEW OVERLAPPING TRIANGLES ---
+
+        // Triangle 4: Yellow (Overlapping Center) - **VERY CLOSE (Z=5)**
+        // This will be drawn LAST in the FIFO and should overwrite all others.
+        draw_triangle(
+            9'd100, 8'd80,   // V1
+            9'd200, 8'd180,  // V2
+            9'd100, 8'd180,  // V3
+            8'hFC,           // Yellow (RGB332: 111_111_00)
+            16'd5, 16'd5, 16'd5
+        );
+        
+        // Triangle 5: Magenta (Overlapping Yellow) - **VERY FAR (Z=100)**
+        // This will be drawn AFTER Yellow, but should be hidden by the Z-buffer.
+        draw_triangle(
+            9'd90, 8'd70,    // V1
+            9'd210, 8'd190,   // V2
+            9'd90, 8'd190,   // V3
+            8'hC3,           // Magenta (RGB332: 110_000_11)
+            16'd100, 16'd100, 16'd100
         );
 
         $display("\nAll triangles submitted. Waiting for display...");
