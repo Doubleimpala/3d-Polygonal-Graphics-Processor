@@ -7,11 +7,9 @@
 #include <cstdlib>
 #include <math.h>
 
-// TODO: REMOVE (put here to make compiler stop complaining)
-#include <stdbool.h
-
 // TODO: Maybe unroll and use restrict keyword
-__inline__ void matmul4x4(const float in1[16], const float in2[16], float out_mat[16]) {
+__inline__ void matmul4x4(const float in1[16], const float in2[16],
+                          float out_mat[16]) {
   for (int r = 0; r < 4; r++) {
     for (int c = 0; c < 4; c++) {
       float dot = 0.0f;
@@ -26,7 +24,8 @@ __inline__ void matmul4x4(const float in1[16], const float in2[16], float out_ma
 }
 
 // TODO: Unroll this?
-__inline__ void matvec4x1(const float mat[16], const float vec[4], float *out_vec) {
+__inline__ void matvec4x1(const float mat[16], const float vec[4],
+                          float *out_vec) {
   for (int mat_r = 0; mat_r < 4; mat_r++) {
     float dot = 0.0f;
 
@@ -61,12 +60,9 @@ int main() {
     float tx = -(cos_yaw * cam_x + sin_yaw * cam_z);
     float ty = -cam_y;
     float tz = -(-sin_yaw * cam_x + cos_yaw * cam_z);
-    const float view_mat[16] = {
-      cos_yaw,  0.0f, sin_yaw, tx,
-      0.0f,     1.0f, 0.0f,    ty,
-      -sin_yaw, 0.0f, cos_yaw, tz,
-      0.0f,     0.0f, 0.0f,    1.0f
-    };
+    const float view_mat[16] = {cos_yaw, 0.0f, sin_yaw,  tx,   0.0f,    1.0f,
+                                0.0f,    ty,   -sin_yaw, 0.0f, cos_yaw, tz,
+                                0.0f,    0.0f, 0.0f,     1.0f};
 
     // ===== PROJECTION MATRIX (for [0, 1] depth) =====
     // Pre-computed for:
@@ -82,29 +78,52 @@ int main() {
     // m[2][2] = far/(far-near) = 300/(300-1) ≈ 1.003
     // m[2][3] = -(far*near)/(far-near) = -300*1/299 ≈ -1.003
     // m[3][2] = 1.0 (for [0,1] depth, not -1.0)
-    const float proj_mat[16] = {
-      1.299f,  0.0f,   0.0f,    0.0f,
-      0.0f,    1.732f, 0.0f,    0.0f,
-      0.0f,    0.0f,   1.003f, -1.003f,
-      0.0f,    0.0f,   1.0f,    0.0f
-    };
+    const float proj_mat[16] = {1.299f, 0.0f, 0.0f, 0.0f, 0.0f,   1.732f,
+                                0.0f,   0.0f, 0.0f, 0.0f, 1.003f, -1.003f,
+                                0.0f,   0.0f, 1.0f, 0.0f};
 
     float proj_view_mat[16];
     matmul4x4(proj_mat, view_mat, proj_view_mat);
 
     // TODO: Look into culling (frustram, backface, occlusion, etc.)
     for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
-      float world_vec1[4] = {(float)cornell_box[i][0],
-                            (float)cornell_box[i][1],
-                            (float)cornell_box[i][2], 1.0f};
+      float world_vec1[4] = {(float)cornell_box[i][0], (float)cornell_box[i][1],
+                             (float)cornell_box[i][2], 1.0f};
 
-      float world_vec2[4] = {(float)cornell_box[i][3],
-                            (float)cornell_box[i][4],
-                            (float)cornell_box[i][5], 1.0f};
+      float world_vec2[4] = {(float)cornell_box[i][3], (float)cornell_box[i][4],
+                             (float)cornell_box[i][5], 1.0f};
 
-      float world_vec3[4] = {(float)cornell_box[i][6],
-                            (float)cornell_box[i][7],
-                            (float)cornell_box[i][8], 1.0f};
+      float world_vec3[4] = {(float)cornell_box[i][6], (float)cornell_box[i][7],
+                             (float)cornell_box[i][8], 1.0f};
+
+      // Backface Culling
+      // Calculate two edges
+      float edge1[3] = {world_vec2[0] - world_vec1[0],
+                        world_vec2[1] - world_vec1[1],
+                        world_vec2[2] - world_vec1[2]};
+
+      float edge2[3] = {world_vec3[0] - world_vec1[0],
+                        world_vec3[1] - world_vec1[1],
+                        world_vec3[2] - world_vec1[2]};
+
+      // Cross product to get normal
+      float normal[3] = {edge1[1] * edge2[2] - edge1[2] * edge2[1],
+                         edge1[2] * edge2[0] - edge1[0] * edge2[2],
+                         edge1[0] * edge2[1] - edge1[1] * edge2[0]};
+
+      // Vector from triangle to camera
+      float to_camera[3] = {cam_x - world_vec1[0], cam_y - world_vec1[1],
+                            cam_z - world_vec1[2]};
+
+      // Dot product
+      float dot = normal[0] * to_camera[0] + normal[1] * to_camera[1] +
+                  normal[2] * to_camera[2];
+
+      // Cull if facing away
+      if (dot < 0.0f) {
+        continue; // Skip this triangle
+      }
+
       float vec1[4], vec2[4], vec3[4];
 
       // Transforms to clip space (before perspective divide)
@@ -135,16 +154,16 @@ int main() {
         continue;
 
       data->color = cornell_box[i][9];
-      float* vecs[3] = {vec1, vec2, vec3};
+      float *vecs[3] = {vec1, vec2, vec3};
       for (int i = 0; i < 3; i++) {
         // Perspective divide
         vecs[i][0] /= vecs[i][3];
         vecs[i][1] /= vecs[i][3];
         vecs[i][2] /= vecs[i][3];
 
-        data->vertices[3 * i] = (uint8_t) ((vecs[i][0] + 1.0f) * 160.0f);
-        data->vertices[3 * i + 1] = (uint8_t) ((1.0f - vecs[i][1]) * 120.0f);
-        data->vertices[3 * i + 2] = (uint8_t) (vecs[i][2] * 255.0f);
+        data->vertices[3 * i] = (uint16_t)((vecs[i][0] + 1.0f) * 160.0f);
+        data->vertices[3 * i + 1] = (uint16_t)((1.0f - vecs[i][1]) * 120.0f);
+        data->vertices[3 * i + 2] = (uint16_t)(vecs[i][2] * 255.0f);
       }
 
       int x1 = data->vertices[0];
@@ -155,7 +174,7 @@ int main() {
       int y3 = data->vertices[7];
 
       float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
-      data->r_area = (r_area < 0) ? - r_area : r_area;
+      data->r_area = (r_area < 0) ? -r_area : r_area;
     }
   }
 }
