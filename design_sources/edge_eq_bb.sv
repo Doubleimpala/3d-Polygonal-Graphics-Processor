@@ -57,11 +57,11 @@ assign bbxi = (temp1 < v3x) ? temp1 : v3x;
 assign temp2 = (v1x > v2x) ? v1x : v2x;
 assign bbxf = (temp2 > v3x) ? temp2 : v3x;
 
-assign temp3 = (v1y > v2y) ? v1y : v2y;
-assign bbyi = (temp3 > v3y) ? temp3 : v3y;
+assign temp3 = (v1y < v2y) ? v1y : v2y;
+assign bbyi = (temp3 < v3y) ? temp3 : v3y;
 
-assign temp4 = (v1y < v2y) ? v1y : v2y;
-assign bbyf = (temp4 < v3y) ? temp4 : v3y;
+assign temp4 = (v1y > v2y) ? v1y : v2y;
+assign bbyf = (temp4 > v3y) ? temp4 : v3y;
 
 
 //Edge equation calculations.
