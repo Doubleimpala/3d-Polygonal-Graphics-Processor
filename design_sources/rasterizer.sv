@@ -107,15 +107,18 @@ logic signed [45:0] z_calc;
 logic [7:0] z;
 
 
-enum logic [3:0] {
+enum logic [4:0] {
     halt,
     edge_prods,
+    edge_prods_wait
     edge_eqs,
     row_setup,
     inside_check,
     barycentric,
+    barycentric_wait,
     barycentric_normalize,
     comp_z_prods,
+    comp_z_wait,
     comp_z,
     buf_addressing,
     read_zbuf,
@@ -146,7 +149,10 @@ always_ff @(posedge clk) begin
                 prod4 <= $signed(b2) * $signed({1'b0, bbyi});
                 prod5 <= $signed(a3) * $signed({1'b0, bbxi});
                 prod6 <= $signed(b3) * $signed({1'b0, bbyi});
-                state <= edge_eqs;
+                state <= edge_prods_wait;
+            end
+            edge_prods_wait: begin
+                state <= edge_eqs;   // allow multipliers to update prod1..prod6
             end
             edge_eqs: begin
                 e1 <= $signed(prod1) + $signed(prod2) + $signed(c1);
@@ -173,6 +179,9 @@ always_ff @(posedge clk) begin
                 w1_raw <= $signed(e1_row) * $signed(inv_area);
                 w2_raw <= $signed(e2_row) * $signed(inv_area);
                 w3_raw <= $signed(e3_row) * $signed(inv_area);
+                state <= barycentric_wait;
+            end
+            barycentric_wait: begin
                 state <= barycentric_normalize;
             end
             barycentric_normalize: begin
@@ -185,6 +194,9 @@ always_ff @(posedge clk) begin
                 prod7 <= w1 * $signed({1'b0, z1});
                 prod8 <= w2 * $signed({1'b0, z2});
                 prod9 <= w3 * $signed({1'b0, z3});
+                state <= comp_z_wait;
+            end
+            comp_z_wait: begin
                 state <= comp_z;
             end
             comp_z: begin
