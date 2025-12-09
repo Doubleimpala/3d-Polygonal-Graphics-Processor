@@ -195,7 +195,7 @@ always_ff @(posedge clk) begin
                 state <= buf_addressing;
             end
             buf_addressing: begin
-                z <= z_calc[45:38];
+                z <= z_calc[7:0];
                 zbuf_addr <= y*320 + x;
                 addr_gpu <= y*320 + x;
                 state <= read_zbuf;
