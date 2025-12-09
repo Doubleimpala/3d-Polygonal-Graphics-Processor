@@ -42,9 +42,6 @@ module hdmi_text_controller_v1_0_AXI #
     input logic [9:0] drawX,
     input logic [9:0] drawY,
     
-    output logic [11:0] font_rom_addr,
-    input logic [7:0] font_rom_data,
-    
     output logic [3:0] red, green, blue,
     
 
