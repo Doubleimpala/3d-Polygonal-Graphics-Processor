@@ -11,7 +11,7 @@ module rasterizer(
     input logic [7:0] color,
 
     //Edge equation coefficients
-    input logic signed [8:0] a1, b1, a2, b2, a3, b3,
+    input logic signed [9:0] a1, b1, a2, b2, a3, b3,
     input logic signed [17:0] c1, c2, c3,
     //Bounding box
     input logic [8:0] bbxi,
@@ -75,12 +75,12 @@ logic [8:0] x;
 logic [7:0] y;
 
 //Edge Equation Products
-logic signed [18:0] prod1; // 9 bit * 9 bit
-logic signed [17:0] prod2; // 9 bit * 8 bit
-logic signed [18:0] prod3;
-logic signed [17:0] prod4;
-logic signed [18:0] prod5;
-logic signed [17:0] prod6;
+logic signed [19:0] prod1; // 9 bit * 9 bit
+logic signed [18:0] prod2; // 9 bit * 8 bit
+logic signed [19:0] prod3;
+logic signed [18:0] prod4;
+logic signed [19:0] prod5;
+logic signed [18:0] prod6;
 
 
 //Edge equations

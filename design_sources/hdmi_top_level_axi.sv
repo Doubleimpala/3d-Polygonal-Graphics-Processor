@@ -493,7 +493,7 @@ logic edge_start;
 logic edge_done;
 
 //Edge equation coefficients.
-logic signed [8:0] a1, b1, a2, b2, a3, b3;
+logic signed [9:0] a1, b1, a2, b2, a3, b3;
 logic signed [17:0] c1, c2, c3;
 logic [8:0] bbxi;
 logic [8:0] bbxf;
