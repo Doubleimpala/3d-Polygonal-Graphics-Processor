@@ -242,9 +242,9 @@ module tb_triangle_pipeline();
         // Triangle 2: Green, closer (Z=10)
         draw_triangle(
             9'd140, 8'd20,   // V1
-            9'd90, 8'd70,    // V2
-            9'd190, 8'd70,   // V3
-            8'h1C,           // Green (RGB332: 000_111_00)
+            9'd190, 8'd70,   // V2 (swapped)
+            9'd90, 8'd70,    // V3 (swapped)
+            8'h1C,           // Green
             16'd10, 16'd10, 16'd10
         );
 
