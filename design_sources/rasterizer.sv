@@ -95,15 +95,18 @@ logic signed [21:0] e3_row;
 
 //Barycentric weights for zbuffer.
 logic signed [53:0] w1_raw, w2_raw, w3_raw;
-logic signed [29:0] w1,w2, w3;
 
 //Barycentric/z interpolation products.
-logic signed [45:0] prod7;
-logic signed [45:0] prod8;
-logic signed [45:0] prod9;
+logic signed [70:0] prod7_raw;
+logic signed [70:0] prod8_raw;
+logic signed [70:0] prod9_raw;
+
+logic signed [46:0] prod7;
+logic signed [46:0] prod8;
+logic signed [46:0] prod9;
 
 //Interpolated Z calculations. We only store "z" in the buffer which is the shifted version of "z_calc"
-logic signed [46:0] z_calc;
+logic signed [47:0] z_calc;
 logic [7:0] z;
 
 
@@ -176,15 +179,15 @@ always_ff @(posedge clk) begin
                 state <= barycentric_normalize;
             end
             barycentric_normalize: begin
-                w1 <= w1_raw >>> 24;
-                w2 <= w2_raw >>> 24;
-                w3 <= w3_raw >>> 24;
+                prod7_raw <= $signed(w1_raw) * $signed({1'b0, z1});
+                prod8_raw <= $signed(w2_raw) * $signed({1'b0, z2});
+                prod9_raw <= $signed(w3_raw) * $signed({1'b0, z3});
                 state <= comp_z_prods;
             end
             comp_z_prods: begin
-                prod7 <= w1 * $signed({1'b0, z1});
-                prod8 <= w2 * $signed({1'b0, z2});
-                prod9 <= w3 * $signed({1'b0, z3});
+                prod7 <= prod7_raw >> 24;
+                prod8 <= prod8_raw >> 24;
+                prod9 <= prod9_raw >> 24;
                 state <= comp_z;
             end
             comp_z: begin
