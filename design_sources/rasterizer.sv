@@ -235,7 +235,7 @@ always_ff @(posedge clk) begin
                     rasterizer_done <= 1;
                     state <= halt;
                 end else begin
-                    y <= y+1;
+                    y <= y-1;
                     e1 <= e1 + b1;
                     e2 <= e2 + b2;
                     e3 <= e3 + b3;
