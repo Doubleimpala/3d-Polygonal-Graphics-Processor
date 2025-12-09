@@ -110,7 +110,7 @@ logic [7:0] z;
 enum logic [4:0] {
     halt,
     edge_prods,
-    edge_prods_wait
+    edge_prods_wait,
     edge_eqs,
     row_setup,
     inside_check,
