@@ -126,7 +126,7 @@ always_comb begin
         backbuf_addrb = 'b0;
 
         // FRONT is read buffer
-        frontbuf_wea   = 'b1;
+        frontbuf_wea   = 'b0;
         frontbuf_addra = 'b0;
         frontbuf_dina  = 'b0;
         frontbuf_addrb = addrb;

@@ -438,7 +438,7 @@ logic prev_vsync;
 
 
 //Triangle controller states:
-enum logic [2:0] {
+enum logic [1:0] {
   clear_buf,
   wait_tri,
   calc_edge,
@@ -534,12 +534,12 @@ end
 // make our own reset logic
 // & also make it single port.
 blk_mem_gen_1 z_buf(
-    .clka(S_AXI_ACLK),
-    .addra(zbuf_addr),
-    .dina(zbuf_din),
-    .douta(zbuf_dout),
-    .wea(zbuf_we),
-    .ena(zbuf_en)
+  .clka(S_AXI_ACLK),
+  .addra(zbuf_addr),
+  .dina(zbuf_din),
+  .douta(zbuf_dout),
+  .wea(zbuf_we),
+  .ena(zbuf_en)
 );
 
 ////////////////////END ZBUFFER
@@ -633,8 +633,9 @@ always_ff @(posedge S_AXI_ACLK) begin
     rasterizer_start <= 0;
     buffers_cleared <= 0;
     clear_addr <= 0;
+    prev_vsync <= 0;
   end else begin
-    if(prev_vsync == 0 && vsync == 1) begin
+    if(prev_vsync == 0 && vsync == 1 && controller_state == wait_tri) begin
       controller_state <= clear_buf;
       buffers_cleared <= 0;
       clear_addr <= 0;
@@ -650,7 +651,7 @@ always_ff @(posedge S_AXI_ACLK) begin
             wea_clear_buf <= 1;
             addra_clear_buf <= clear_addr;
             dina_clear_buf <= 8'h00;
-            
+
             clear_addr <= clear_addr + 1;
             
             if(clear_addr == 76799) begin
