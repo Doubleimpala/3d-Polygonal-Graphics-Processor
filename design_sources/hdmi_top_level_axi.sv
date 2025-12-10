@@ -452,10 +452,11 @@ logic wea;
 logic [16:0] addra;
 logic [7:0] dina;
 
-//Buffer signals from rasterizer.
-logic wea_raster;
-logic [16:0] addra_raster;
-logic [7:0] dina_raster;
+//Rasterizer memory signals.
+logic write_enable_gpu;
+logic [7:0] data_in_gpu;
+logic [16:0] addr_gpu;
+
 //Buffer signals from clear buffer.
 logic wea_clear_buf;
 logic [16:0] addra_clear_buf;
@@ -598,15 +599,6 @@ edge_eq_bb edge_calc(
 //Rasterizer handshaking protocol. We assert rasterizer_start for 1 clock cycle when the data in is valid. We then wait for rasterizer_done before retrieving data and continuing to next stage. Expect a  clock cycle latency.
 logic rasterizer_start;
 logic rasterizer_done;
-
-// //Memory frame buffer signals
-// logic write_enable_gpu;
-// logic [7:0] data_in_gpu;
-// logic [16:0] addr_gpu;
-// assign wea = write_enable_gpu;
-// assign dina = data_in_gpu;
-// assign addra = addr_gpu;
-
 
 
 //Z coordinates
