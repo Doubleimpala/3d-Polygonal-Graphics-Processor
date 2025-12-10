@@ -648,7 +648,7 @@ always_ff @(posedge S_AXI_ACLK) begin
     controller_state <= clear_buf;
     triangle_ready <= 1;
     edge_start <= 0;
-    rasterizer_start <= 0;x
+    rasterizer_start <= 0;
     buffers_cleared <= 0;
     clear_addr <= 0;
   end else begin
