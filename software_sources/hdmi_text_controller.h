@@ -10,8 +10,11 @@
 struct DATA {
   uint16_t vertices[9];
   uint8_t color;
-  float r_area;
+  int32_t r_area;
 };
+
+// TODO: SET THIS LATER
+volatile bool vsync;
 
 //TODO: CHANGE THIS
 static volatile struct DATA* data = XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
