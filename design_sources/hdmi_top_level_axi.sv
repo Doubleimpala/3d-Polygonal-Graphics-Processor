@@ -623,19 +623,36 @@ logic triangle_valid;
 logic buffers_cleared;
 logic [16:0] clear_addr;
 
+logic prev_vsync_sync;
+logic vsync_sync1;
+logic vsync_sync2;
 
 always_ff @(posedge S_AXI_ACLK) begin
-  prev_vsync <= vsync;
+    vsync_sync1 <= vsync;
+    vsync_sync2 <= vsync_sync1;
+end
+
+//Used to prevent clock domain crossing since the memory runs at 100 MHz and vsync is at 25 MHz, causes front to trigger multiple times.
+always_ff @(posedge S_AXI_ACLK) begin
+    if (~S_AXI_ARESETN) begin
+        prev_vsync_sync <= 1'b0;
+    end 
+    else begin
+      prev_vsync_sync <= vsync_sync2;
+    end
+end
+
+
+always_ff @(posedge S_AXI_ACLK) begin
   if(~S_AXI_ARESETN) begin
     controller_state <= clear_buf;
     triangle_ready <= 1;
     edge_start <= 0;
-    rasterizer_start <= 0;
+    rasterizer_start <= 0;x
     buffers_cleared <= 0;
     clear_addr <= 0;
-    prev_vsync <= 0;
   end else begin
-    if(prev_vsync == 0 && vsync == 1 && controller_state == wait_tri) begin
+    if(~prev_vsync_sync && vsync_sync2 && controller_state == wait_tri) begin
       controller_state <= clear_buf;
       buffers_cleared <= 0;
       clear_addr <= 0;
@@ -653,7 +670,7 @@ always_ff @(posedge S_AXI_ACLK) begin
             dina_clear_buf <= 8'h00;
 
             clear_addr <= clear_addr + 1;
-            
+
             if(clear_addr == 76799) begin
               buffers_cleared <= 1;
               zbuf_we_buf_clear <= 0;
