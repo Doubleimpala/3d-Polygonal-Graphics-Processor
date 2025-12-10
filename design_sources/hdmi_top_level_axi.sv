@@ -644,7 +644,7 @@ end
 always_ff @(posedge S_AXI_ACLK) begin
   if(~S_AXI_ARESETN) begin
     controller_state <= clear_buf;
-    triangle_ready <= 1;
+    triangle_ready <= 0;
     edge_start <= 0;
     rasterizer_start <= 0;
     buffers_cleared <= 0;
@@ -673,6 +673,7 @@ always_ff @(posedge S_AXI_ACLK) begin
               buffers_cleared <= 1;
               zbuf_we_buf_clear <= 0;
               wea_clear_buf <= 0;
+              triangle_ready <= 1;
               controller_state <= wait_tri;
             end
           end
