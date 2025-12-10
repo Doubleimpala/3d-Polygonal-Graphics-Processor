@@ -264,7 +264,7 @@ logic douta;
 // Slave register write enable is asserted when valid address and data are available
 // and the slave is ready to accept the write address and write data.
 // assign slv_reg_wren = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID;
-// logic prev_vsync;
+logic prev_vsync;
 // //integer write_counter = 0;
 // always_ff @( posedge S_AXI_ACLK )
 // begin
@@ -290,7 +290,7 @@ logic douta;
 //   //CHANGED
 //   control_regs[1] <= drawX;
 //   control_regs[2] <= drawY;
-//   prev_vsync <= vsync;
+  // prev_vsync <= vsync;
 //   if (S_AXI_ARESETN == 1'b0)
 //     control_regs[0] <= 'b0;
 //   else if (prev_vsync & ~vsync)
@@ -437,13 +437,42 @@ logic douta;
 
 
 
+//Triangle controller states:
+enum logic [2:0] {
+  clear_buf,
+  wait_tri,
+  calc_edge,
+  rasterize
+} controller_state;
+
 
 ////////////////////BEGIN FRAME BUFFER
-
 //Buffer signals for the GPU side.
 logic wea;
 logic [16:0] addra;
 logic [7:0] dina;
+
+//Buffer signals from rasterizer.
+logic wea_raster;
+logic [16:0] addra_raster;
+logic [7:0] dina_raster;
+//Buffer signals from clear buffer.
+logic wea_clear_buf;
+logic [16:0] addra_clear_buf;
+logic [7:0] dina_clear_buf;
+
+//MUX to switch between.
+always_comb begin
+  if(controller_state == clear_buf) begin
+    wea = wea_clear_buf;
+    addra = addra_clear_buf;
+    dina = dina_clear_buf;
+  end else begin 
+    wea = write_enable_gpu;
+    addra = addr_gpu;
+    dina = data_in_gpu;
+  end
+end
 
 //Buffer signals for the VGA side
 logic [7:0] doutb;
@@ -456,6 +485,63 @@ framebuffer fb(
 );
 
 ////////////////////END FRAME BUFFER
+
+
+////////////////////ZBUFFER
+//Zbuffer signals
+logic [7:0] zbuf_dout;
+logic [16:0] zbuf_addr;
+logic [7:0] zbuf_din;
+logic zbuf_we;
+logic zbuf_en;
+assign zbuf_en = 1;
+
+//Zbuffer signals from rasterizer
+logic [7:0] zbuf_dout_raster;
+logic [16:0] zbuf_addr_raster;
+logic [7:0] zbuf_din_raster;
+logic zbuf_we_raster;
+logic zbuf_en_raster;
+assign zbuf_dout_raster = zbuf_dout;
+
+//Zbuffer signals from buffer clear.
+logic [16:0] zbuf_addr_buf_clear;
+logic [7:0] zbuf_din_buf_clear;
+logic zbuf_we_buf_clear;
+logic zbuf_en_buf_clear;
+
+//MUX to switch between clear buffer control and 
+always_comb begin
+  if(controller_state == clear_buf) begin
+    zbuf_addr = zbuf_addr_buf_clear;
+    zbuf_din = zbuf_din_buf_clear;
+    zbuf_we = zbuf_we_buf_clear;
+    zbuf_en = zbuf_en_buf_clear;
+  end else begin
+    zbuf_addr = zbuf_addr_raster;
+    zbuf_din = zbuf_din_raster;
+    zbuf_we = zbuf_we_raster;
+    zbuf_en = zbuf_en_raster;
+  end
+end
+// 320 * 240 * 1 B = 76.8 kB
+// width: 8 bits
+// Make sure to initialize each cell to the maximum integer
+// This can either be done once on initialization through vivado
+// with a .mif or .coe file
+// OR
+// make our own reset logic
+// & also make it single port.
+blk_mem_gen_1 z_buf(
+    .clka(S_AXI_ACLK),
+    .addra(zbuf_addr),
+    .dina(zbuf_din),
+    .douta(zbuf_dout),
+    .wea(zbuf_we),
+    .ena(zbuf_en)
+);
+
+////////////////////END ZBUFFER
 
 
 //Triangle logic
@@ -513,13 +599,13 @@ edge_eq_bb edge_calc(
 logic rasterizer_start;
 logic rasterizer_done;
 
-//Memory frame buffer signals
-logic write_enable_gpu;
-logic [7:0] data_in_gpu;
-logic [16:0] addr_gpu;
-assign wea = write_enable_gpu;
-assign dina = data_in_gpu;
-assign addra = addr_gpu;
+// //Memory frame buffer signals
+// logic write_enable_gpu;
+// logic [7:0] data_in_gpu;
+// logic [16:0] addr_gpu;
+// assign wea = write_enable_gpu;
+// assign dina = data_in_gpu;
+// assign addra = addr_gpu;
 
 
 
@@ -529,6 +615,11 @@ logic [15:0] z1, z2, z3;
 rasterizer raster(
   .clk(S_AXI_ACLK),
   .rst(~S_AXI_ARESETN),
+  .zbuf_dout(zbuf_dout_raster),
+  .zbuf_addr(zbuf_addr_raster),
+  .zbuf_din(zbuf_din_raster),
+  .zbuf_we(zbuf_we_raster),
+  .zbuf_en(zbuf_en_raster),
   .*
 );
 ////////////////////END RASTERIZER STAGE
@@ -537,48 +628,74 @@ rasterizer raster(
 ////////////////////BEGIN PIPELINE CONTROLLER
 logic triangle_ready;
 logic triangle_valid;
+logic buffers_cleared;
+logic [16:0] clear_addr;
 
-enum logic [1:0] {
-  wait_tri,
-  calc_edge,
-  rasterize
-} controller_state;
 
 always_ff @(posedge S_AXI_ACLK) begin
+  prev_vsync <= vsync;
   if(~S_AXI_ARESETN) begin
-    controller_state <= wait_tri;
+    controller_state <= clear_buf;
     triangle_ready <= 1;
     edge_start <= 0;
     rasterizer_start <= 0;
+    buffers_cleared <= 0;
+    clear_addr <= 0;
   end else begin
-    case(controller_state) 
-      wait_tri: begin
-        if(triangle_ready && triangle_valid) begin
-          edge_start <= 1;
-          triangle_ready <= 0;
-          controller_state <= calc_edge;
+    if(prev_vsync == 0 && vsync == 1) begin
+      controller_state <= clear_buf;
+      buffers_cleared <= 0;
+      clear_addr <= 0;
+    end else begin
+      case(controller_state) 
+        clear_buf: begin
+          if(~buffers_cleared) begin
+            // Clear both buffers
+            zbuf_we_buf_clear <= 1;
+            zbuf_addr_buf_clear <= clear_addr;
+            zbuf_din_buf_clear <= 8'hFF;
+            
+            wea_clear_buf <= 1;
+            addra_clear_buf <= clear_addr;
+            dina_clear_buf <= 8'h00;
+            
+            clear_addr <= clear_addr + 1;
+            
+            if(clear_addr == 76799) begin
+              buffers_cleared <= 1;
+              zbuf_we_buf_clear <= 0;
+              wea_clear_buf <= 0;
+              controller_state <= wait_tri;
+            end
+          end
         end
-      end
-      calc_edge: begin
-        edge_start <= 0;
-        if(edge_done) begin
-          rasterizer_start <= 1;
-          controller_state <= rasterize;
+        wait_tri: begin
+          if(triangle_ready && triangle_valid) begin
+            edge_start <= 1;
+            triangle_ready <= 0;
+            controller_state <= calc_edge;
+          end
         end
-      end
-      rasterize: begin
-        rasterizer_start <= 0;
-        if(rasterizer_done) begin
-          controller_state <= wait_tri;
-          triangle_ready <= 1;
+        calc_edge: begin
+          edge_start <= 0;
+          if(edge_done) begin
+            rasterizer_start <= 1;
+            controller_state <= rasterize;
+          end
         end
-      end
-    endcase
+        rasterize: begin
+          rasterizer_start <= 0;
+          if(rasterizer_done) begin
+            controller_state <= wait_tri;
+            triangle_ready <= 1;
+          end
+        end
+      endcase
+    end
   end
 end
 
 ////////////////////END PIPELINE CONTROLLER
-
 
 
 

@@ -29,16 +29,15 @@ module rasterizer(
     //Frame buffer memory signals
     output logic write_enable_gpu,
     output logic [7:0] data_in_gpu,
-    output logic [16:0] addr_gpu
+    output logic [16:0] addr_gpu,
+    
+    //Zbuffer memory signals.
+    input logic [7:0] zbuf_dout,
+    output logic [16:0] zbuf_addr,
+    output logic [7:0] zbuf_din,
+    output logic zbuf_we,
+    output logic zbuf_en,
 );
-
-//Zbuffer signals
-logic [7:0] zbuf_dout;
-logic [16:0] zbuf_addr;
-logic [7:0] zbuf_din;
-logic zbuf_we;
-logic zbuf_en;
-assign zbuf_en = 1;
 
 //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
 //Very cool stack overflow post saved me from a lot of work!
@@ -245,21 +244,4 @@ always_ff @(posedge clk) begin
         endcase
     end
 end
-
-// 320 * 240 * 1 B = 76.8 kB
-// width: 8 bits
-// Make sure to initialize each cell to the maximum integer
-// This can either be done once on initialization through vivado
-// with a .mif or .coe file
-// OR
-// make our own reset logic
-// & also make it single port.
-blk_mem_gen_1 z_buf(
-    .clka(clk),
-    .addra(zbuf_addr),
-    .dina(zbuf_din),
-    .douta(zbuf_dout),
-    .wea(zbuf_we),
-    .ena(zbuf_en)
-);
 endmodule
