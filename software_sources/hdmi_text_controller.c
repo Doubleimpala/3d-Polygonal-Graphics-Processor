@@ -87,6 +87,9 @@ int main() {
 
     // TODO: Look into culling (frustram, backface, occlusion, etc.)
     for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
+      if (!vsync)
+        break;
+
       float world_vec1[4] = {(float)cornell_box[i][0], (float)cornell_box[i][1],
                              (float)cornell_box[i][2], 1.0f};
 
@@ -174,7 +177,12 @@ int main() {
       int y3 = data->vertices[7];
 
       float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
-      data->r_area = (r_area < 0) ? -r_area : r_area;
+      if (r_area < 0) r_area *= -1;
+
+      // Turn into 8.24 fixed point
+      data->r_area = (int32_t) r_area * (1 << 24);
     }
+
+    while (vsync);
   }
 }
