@@ -517,12 +517,10 @@ always_comb begin
     zbuf_addr = zbuf_addr_buf_clear;
     zbuf_din = zbuf_din_buf_clear;
     zbuf_we = zbuf_we_buf_clear;
-    zbuf_en = zbuf_en_buf_clear;
   end else begin
     zbuf_addr = zbuf_addr_raster;
     zbuf_din = zbuf_din_raster;
     zbuf_we = zbuf_we_raster;
-    zbuf_en = zbuf_en_raster;
   end
 end
 // 320 * 240 * 1 B = 76.8 kB
