@@ -194,7 +194,6 @@ begin
     begin
       axi_awready <= 1'b0;
       aw_en <= 1'b1;
-      fifo_wr_en <= 1'b0;
     end 
   else
     begin    
@@ -276,15 +275,18 @@ end
 // Slave register write enable is asserted when valid address and data are available
 // and the slave is ready to accept the write address and write data.
 logic [31:0] buffer [5:0];
+logic buffer_wr_en;
 assign buffer_wr_en = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID;
 always_ff @( posedge S_AXI_ACLK ) begin
-  if ( S_AXI_ARESETN == 1'b1 && buffer_wr_en ) begin
+  if ( S_AXI_ARESETN == 1'b0) begin
+        fifo_wr_en <= 1'b0;
+  end else if ( buffer_wr_en ) begin
     buffer[axi_awaddr[4:2]] <= S_AXI_WDATA;
 
     fifo_wr_en <= 1'b0;
     if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
         fifo_din <= {
-            buffer[5],  // r_area //Maybe replace with S_AXI_WDATA
+            S_AXI_WDATA,  // r_area //Maybe replace with S_AXI_WDATA
             buffer[4],  // color + v3z
             buffer[3],  // v3y + v3x
             buffer[2],  // v2z + v2y
@@ -293,7 +295,7 @@ always_ff @( posedge S_AXI_ACLK ) begin
         };
         fifo_wr_en <= 1'b1;
     end
-  end else if ( S_AXI_ARESETN == 1'b1 ) begin
+  end else begin
       fifo_wr_en <= 'b0;
   end
 end    
