@@ -131,6 +131,9 @@ logic [191:0] fifo_dout;
 logic fifo_rd_en;
 logic fifo_srst;
 
+logic triangle_ready;
+logic triangle_valid;
+
 
 
 
@@ -649,8 +652,6 @@ rasterizer raster(
 
 
 ////////////////////BEGIN PIPELINE CONTROLLER
-logic triangle_ready;
-logic triangle_valid;
 logic buffers_cleared;
 logic [16:0] clear_addr;
 
