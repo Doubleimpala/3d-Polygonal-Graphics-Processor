@@ -34,7 +34,7 @@ module hdmi_text_controller_v1_0_AXI #
     // Width of S_AXI data bus
     parameter integer C_S_AXI_DATA_WIDTH	= 32,
     // Width of S_AXI address bus
-    parameter integer C_S_AXI_ADDR_WIDTH	= 14
+    parameter integer C_S_AXI_ADDR_WIDTH	= 5
 )
 (
     // Users to add ports here
@@ -52,38 +52,38 @@ module hdmi_text_controller_v1_0_AXI #
     // Global Reset Signal. This Signal is Active LOW
     input logic  S_AXI_ARESETN
     // Write address (issued by master, acceped by Slave)
-    // input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
+    input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
     // // Write channel Protection type. This signal indicates the
     //     // privilege and security level of the transaction, and whether
     //     // the transaction is a data access or an instruction access.
     // input logic [2 : 0] S_AXI_AWPROT,
     // // Write address valid. This signal indicates that the master signaling
     //     // valid write address and control information.
-    // input logic  S_AXI_AWVALID,
+    input logic  S_AXI_AWVALID,
     // // Write address ready. This signal indicates that the slave is ready
     //     // to accept an address and associated control signals.
-    // output logic  S_AXI_AWREADY,
+    output logic  S_AXI_AWREADY,
     // // Write data (issued by master, acceped by Slave) 
-    // input logic [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_WDATA,
+    input logic [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_WDATA,
     // // Write strobes. This signal indicates which byte lanes hold
     //     // valid data. There is one write strobe bit for each eight
     //     // bits of the write data bus.    
     // input logic [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
     // // Write valid. This signal indicates that valid write
     //     // data and strobes are available.
-    // input logic  S_AXI_WVALID,
+    input logic  S_AXI_WVALID,
     // // Write ready. This signal indicates that the slave
     //     // can accept the write data.
-    // output logic  S_AXI_WREADY,
+    output logic  S_AXI_WREADY,
     // // Write response. This signal indicates the status
     //     // of the write transaction.
-    // output logic [1 : 0] S_AXI_BRESP,
+    output logic [1 : 0] S_AXI_BRESP,
     // // Write response valid. This signal indicates that the channel
     //     // is signaling a valid write response.
-    // output logic  S_AXI_BVALID,
+    output logic  S_AXI_BVALID,
     // // Response ready. This signal indicates that the master
     //     // can accept a write response.
-    // input logic  S_AXI_BREADY,
+    input logic  S_AXI_BREADY,
     // // Read address (issued by master, acceped by Slave)
     // input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
     // // Protection type. This signal indicates the privilege
@@ -110,11 +110,11 @@ module hdmi_text_controller_v1_0_AXI #
 );
 
 // AXI4LITE signals
-// logic  [C_S_AXI_ADDR_WIDTH - 1 : 0] 	axi_awaddr;
-// logic  axi_awready;
-// logic  axi_wready;
-// logic  [1 : 0] 	axi_bresp;
-// logic  axi_bvalid;
+logic  [C_S_AXI_ADDR_WIDTH - 1 : 0] 	axi_awaddr;
+logic  axi_awready;
+logic  axi_wready;
+logic  [1 : 0] 	axi_bresp;
+logic  axi_bvalid;
 // logic  [C_S_AXI_ADDR_WIDTH - 1 : 0] 	axi_araddr;
 // logic  axi_arready;
 // logic  [C_S_AXI_DATA_WIDTH - 1 : 0] 	axi_rdata;
@@ -148,11 +148,12 @@ logic douta;
 // logic [31:0] control_regs[3];
 
 
+logic [C_S_AXI_ADDR_WIDTH - 1:0] addr_write;
 // logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_write;
 // logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_read;
 
 // integer	 byte_index;
-// logic	 aw_en;
+logic	 aw_en;
 
 
 // logic [1:0] rcounter;
@@ -164,10 +165,10 @@ logic douta;
 
 // I/O Connections assignments
 
-// assign S_AXI_AWREADY	= axi_awready;
-// assign S_AXI_WREADY	= axi_wready;
-// assign S_AXI_BRESP	= axi_bresp;
-// assign S_AXI_BVALID	= axi_bvalid;
+assign S_AXI_AWREADY	= axi_awready;
+assign S_AXI_WREADY	= axi_wready;
+assign S_AXI_BRESP	= axi_bresp;
+assign S_AXI_BVALID	= axi_bvalid;
 // assign S_AXI_ARREADY = axi_arready;
 // assign S_AXI_RDATA	= axi_rdata;
 // assign S_AXI_RRESP	= axi_rresp;
@@ -177,83 +178,83 @@ logic douta;
 // S_AXI_AWVALID and S_AXI_WVALID are asserted. axi_awready is
 // de-asserted when reset is low.
 
-// always_ff @( posedge S_AXI_ACLK )
-// begin
-//   if ( S_AXI_ARESETN == 1'b0 )
-//     begin
-//       axi_awready <= 1'b0;
-//       aw_en <= 1'b1;
-//     end 
-//   else
-//     begin    
-//       if (~axi_awready && S_AXI_AWVALID && S_AXI_WVALID && aw_en)
-//         begin
-//           // slave is ready to accept write address when 
-//           // there is a valid write address and write data
-//           // on the write address and data bus. This design 
-//           // expects no outstanding transactions. 
-//           axi_awready <= 1'b1;
-//           aw_en <= 1'b0;
-//         end
-//         else if (S_AXI_BREADY && axi_bvalid)
-//             begin
-//               aw_en <= 1'b1;
-//               axi_awready <= 1'b0;
-//             end
-//       else           
-//         begin
-//           axi_awready <= 1'b0;
-//         end
-//     end 
-// end       
+always_ff @( posedge S_AXI_ACLK )
+begin
+  if ( S_AXI_ARESETN == 1'b0 )
+    begin
+      axi_awready <= 1'b0;
+      aw_en <= 1'b1;
+    end 
+  else
+    begin    
+      if (~axi_awready && S_AXI_AWVALID && S_AXI_WVALID && aw_en)
+        begin
+          // slave is ready to accept write address when 
+          // there is a valid write address and write data
+          // on the write address and data bus. This design 
+          // expects no outstanding transactions. 
+          axi_awready <= 1'b1;
+          aw_en <= 1'b0;
+        end
+        else if (S_AXI_BREADY && axi_bvalid)
+            begin
+              aw_en <= 1'b1;
+              axi_awready <= 1'b0;
+            end
+      else           
+        begin
+          axi_awready <= 1'b0;
+        end
+    end 
+end       
 
 // Implement axi_awaddr latching
 // This process is used to latch the address when both 
 // S_AXI_AWVALID and S_AXI_WVALID are valid. 
 
-// always_ff @( posedge S_AXI_ACLK )
-// begin
-//   if ( S_AXI_ARESETN == 1'b0 )
-//     begin
-//       axi_awaddr <= 0;
-//     end 
-//   else
-//     begin    
-//       if (~axi_awready && S_AXI_AWVALID && S_AXI_WVALID && aw_en)
-//         begin
-//           // Write Address latching 
-//           axi_awaddr <= S_AXI_AWADDR;
-//         end
-//     end 
-// end       
+always_ff @( posedge S_AXI_ACLK )
+begin
+  if ( S_AXI_ARESETN == 1'b0 )
+    begin
+      axi_awaddr <= 0;
+    end 
+  else
+    begin    
+      if (~axi_awready && S_AXI_AWVALID && S_AXI_WVALID && aw_en)
+        begin
+          // Write Address latching 
+          axi_awaddr <= S_AXI_AWADDR;
+        end
+    end 
+end       
 
 // Implement axi_wready generation
 // axi_wready is asserted for one S_AXI_ACLK clock cycle when both
 // S_AXI_AWVALID and S_AXI_WVALID are asserted. axi_wready is 
 // de-asserted when reset is low. 
 
-// always_ff @( posedge S_AXI_ACLK )
-// begin
-//   if ( S_AXI_ARESETN == 1'b0 )
-//     begin
-//       axi_wready <= 1'b0;
-//     end 
-//   else
-//     begin    
-//       if (~axi_wready && S_AXI_WVALID && S_AXI_AWVALID && aw_en )
-//         begin
-//           // slave is ready to accept write data when 
-//           // there is a valid write address and write data
-//           // on the write address and data bus. This design 
-//           // expects no outstanding transactions. 
-//           axi_wready <= 1'b1;
-//         end
-//       else
-//         begin
-//           axi_wready <= 1'b0;
-//         end
-//     end 
-// end       
+always_ff @( posedge S_AXI_ACLK )
+begin
+  if ( S_AXI_ARESETN == 1'b0 )
+    begin
+      axi_wready <= 1'b0;
+    end 
+  else
+    begin    
+      if (~axi_wready && S_AXI_WVALID && S_AXI_AWVALID && aw_en )
+        begin
+          // slave is ready to accept write data when 
+          // there is a valid write address and write data
+          // on the write address and data bus. This design 
+          // expects no outstanding transactions. 
+          axi_wready <= 1'b1;
+        end
+      else
+        begin
+          axi_wready <= 1'b0;
+        end
+    end 
+end       
 
 
 // Implement memory mapped register select and write logic generation
@@ -263,72 +264,59 @@ logic douta;
 // These registers are cleared when reset (active low) is applied.
 // Slave register write enable is asserted when valid address and data are available
 // and the slave is ready to accept the write address and write data.
-// assign slv_reg_wren = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID;
-logic prev_vsync;
-// //integer write_counter = 0;
-// always_ff @( posedge S_AXI_ACLK )
-// begin
-// //  write_counter = write_counter + 1;
+logic [31:0] buffer [5:0];
+assign buffer_wr_en = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID;
+always_ff @( posedge S_AXI_ACLK ) begin
+  if ( S_AXI_ARESETN == 1'b1 && buffer_wr_en ) begin
+    buffer[axi_awaddr[4:2]] <= S_AXI_WDATA;
 
-//     if(axi_awready && S_AXI_AWVALID) begin
-//         addr_write <= axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB];
-//     end
-    
-//     if(axi_wready && S_AXI_WVALID) begin
-//         if(axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] <= 'h4AF) begin
-//             dina <= S_AXI_WDATA;
-//             wea <= S_AXI_WSTRB;
-//           end
-//          else begin
-//             if (axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] >= 'h800 && axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] <= 'h807) begin
-//                 palette_regs[2 * (axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] - 'h800) + 1] <= S_AXI_WDATA[31:16];
-//                 palette_regs[2 * (axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] - 'h800)] <= S_AXI_WDATA[15:0];
-//             end
-//          end
-//     end else wea <= 0;
-  
-//   //CHANGED
-//   control_regs[1] <= drawX;
-//   control_regs[2] <= drawY;
-  // prev_vsync <= vsync;
-//   if (S_AXI_ARESETN == 1'b0)
-//     control_regs[0] <= 'b0;
-//   else if (prev_vsync & ~vsync)
-//     control_regs[0] <= control_regs[0] + 1;
-// end    
+    fifo_wr_en <= 1'b0;
+    if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
+        fifo_din <= {
+            buffer[5],  // r_area
+            buffer[4],  // color + v3z
+            buffer[3],  // v3y + v3x
+            buffer[2],  // v2z + v2y
+            buffer[1],  // v2x + v1z
+            buffer[0]   // v1y + v1x
+        };
+        fifo_wr_en <= 1'b1;
+    end
+  end
+end    
 
-// i love ece 385! 
-//  
 // Implement write response logic generation
 // The write response and response valid signals are asserted by the slave 
 // when axi_wready, S_AXI_WVALID, axi_wready and S_AXI_WVALID are asserted.  
 // This marks the acceptance of address and indicates the status of 
 // write transaction.
 
-// always_ff @( posedge S_AXI_ACLK )
-// begin
-//   if ( S_AXI_ARESETN == 1'b0 )
-//     begin
-//       axi_bvalid  <= 0;
-//       axi_bresp   <= 2'b0;
-//       wcounterreset <= 1'b1;
-//     end 
-//   else
-//     begin    
-//       if (axi_awready && S_AXI_AWVALID && axi_wready && S_AXI_WVALID)
-//           wcounter <= 2'b00;
-//       else if (wcounter < 2'b10)
-//           wcounter <= wcounter + 1;
-          
-//       if (~axi_bvalid && (wcounter >= 2'b10)) begin
-//           axi_bvalid <= 1'b1;
-//           axi_bresp  <= 2'b00; // 'OKAY' response 
-//       end 
-//       else if (S_AXI_BREADY && axi_bvalid) begin
-//           axi_bvalid <= 1'b0;
-//       end
-//     end
-// end   
+always_ff @( posedge S_AXI_ACLK )
+begin
+  if ( S_AXI_ARESETN == 1'b0 )
+    begin
+      axi_bvalid  <= 0;
+      axi_bresp   <= 2'b0;
+    end 
+  else
+    begin    
+      if (axi_awready && S_AXI_AWVALID && ~axi_bvalid && axi_wready && S_AXI_WVALID)
+        begin
+          // indicates a valid write response is available
+          axi_bvalid <= 1'b1;
+          axi_bresp  <= 2'b0; // 'OKAY' response 
+        end                   // work error responses in future
+      else
+        begin
+          if (S_AXI_BREADY && axi_bvalid) 
+            //check if bready is asserted while bvalid is high) 
+            //(there is a possibility that bready is always asserted high)   
+            begin
+              axi_bvalid <= 1'b0; 
+            end  
+        end
+    end
+end   
 
 
 // Implement axi_arready generation
@@ -546,6 +534,28 @@ blk_mem_gen_1 z_buf(
 //Triangle logic
 
 //Recieve Triangles into FIFO.
+logic fifo_full;
+logic [191:0] fifo_din;
+logic fifo_wr_en;
+logic fifo_empty;
+logic [191:0] fifo_dout;
+logic fifo_rd_en;
+logic fifo_srst;
+
+
+///// Configuration
+// Interface type: Native
+// Write/Read Width: 192 (32 * 6)
+fifo_generator_0 fifo(
+  .clk(S_AXI_ACLK),
+  .srst(~S_AXI_ARESETN),
+  .full(fifo_full),
+  .din(fifo_din),
+  .wr_en(fifo_wr_en),
+  .empty(fifo_empty),
+  .dout(fifo_dout),
+  .rd_en(fifo_rd_en)
+);
 
 
 //Signals for 1 triangle:
@@ -553,13 +563,21 @@ logic [8:0] v1x, v2x, v3x;
 logic [7:0] v1y, v2y, v3y;
 logic [7:0] color;
 logic [31:0] inv_area;
+// use triangle_ready and triangle_valid signals
+assign triangle_valid = ~fifo_empty;
+assign fifo_rd_en = triangle_valid & triangle_ready;
 
-//TODO: TRIANGLE FIFO SETUP
-//1. 
-
-//TODO: AXI SETUP
-//1.
-
+assign [31:0] inv_area = fifo_dout[183:152];
+assign [7:0] color = fifo_dout[151:144];
+assign [15:0] vertex0 = fifo_dout[143:128];
+assign [15:0] vertex1 = fifo_dout[127:112];
+assign [15:0] vertex2 = fifo_dout[111:96];
+assign [15:0] vertex3 = fifo_dout[95:80];
+assign [15:0] vertex4 = fifo_dout[79:64];
+assign [15:0] vertex5 = fifo_dout[63:48];
+assign [15:0] vertex6 = fifo_dout[47:32];
+assign [15:0] vertex7 = fifo_dout[31:16];
+assign [15:0] vertex8 = fifo_dout[15:0];
 
 ////////////////////BEGIN EDGES & BOUNDING BOX STAGE (3 clock cycles)
 //Calculate Edge equations using vertices, and bounding box.

@@ -87,7 +87,9 @@ int main() {
 
     // TODO: Look into culling (frustram, backface, occlusion, etc.)
     for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
-      if (!vsync)
+      DATA data;
+
+      if (!*vsync)
         break;
 
       float world_vec1[4] = {(float)cornell_box[i][0], (float)cornell_box[i][1],
@@ -156,7 +158,7 @@ int main() {
       if (vec1[3] <= 0.0001f || vec2[3] <= 0.0001f || vec3[3] <= 0.0001f)
         continue;
 
-      data->color = cornell_box[i][9];
+      data.color = cornell_box[i][9];
       float *vecs[3] = {vec1, vec2, vec3};
       for (int i = 0; i < 3; i++) {
         // Perspective divide
@@ -164,25 +166,33 @@ int main() {
         vecs[i][1] /= vecs[i][3];
         vecs[i][2] /= vecs[i][3];
 
-        data->vertices[3 * i] = (uint16_t)((vecs[i][0] + 1.0f) * 160.0f);
-        data->vertices[3 * i + 1] = (uint16_t)((1.0f - vecs[i][1]) * 120.0f);
-        data->vertices[3 * i + 2] = (uint16_t)(vecs[i][2] * 255.0f);
+        data.vertices[3 * i] = (uint16_t)((vecs[i][0] + 1.0f) * 160.0f);
+        data.vertices[3 * i + 1] = (uint16_t)((1.0f - vecs[i][1]) * 120.0f);
+        data.vertices[3 * i + 2] = (uint16_t)(vecs[i][2] * 255.0f);
       }
 
-      int x1 = data->vertices[0];
-      int y1 = data->vertices[1];
-      int x2 = data->vertices[3];
-      int y2 = data->vertices[4];
-      int x3 = data->vertices[6];
-      int y3 = data->vertices[7];
+      int x1 = data.vertices[0];
+      int y1 = data.vertices[1];
+      int x2 = data.vertices[3];
+      int y2 = data.vertices[4];
+      int x3 = data.vertices[6];
+      int y3 = data.vertices[7];
 
       float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
       if (r_area < 0) r_area *= -1;
 
       // Turn into 8.24 fixed point
-      data->r_area = (int32_t) r_area * (1 << 24);
+      data.r_area = (int32_t) r_area * (1 << 24);
+
+      // Copy into AXI/FIFO, pack into 32 bit words to avoid write strobe
+      addr[0] = ((uint32_t)data.vertices[1] << 16) | data.vertices[0];
+      addr[1] = ((uint32_t)data.vertices[3] << 16) | data.vertices[2];
+      addr[2] = ((uint32_t)data.vertices[5] << 16) | data.vertices[4];
+      addr[3] = ((uint32_t)data.vertices[7] << 16) | data.vertices[6];
+      addr[4] = ((uint32_t)data.color << 16) | data.vertices[8];
+      addr[5] = (uint32_t)data.r_area;
     }
 
-    while (vsync);
+    while (*vsync);
   }
 }
