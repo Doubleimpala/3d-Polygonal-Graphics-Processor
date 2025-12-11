@@ -184,6 +184,7 @@ begin
     begin
       axi_awready <= 1'b0;
       aw_en <= 1'b1;
+      fifo_wr_en <= 1'b0;
     end 
   else
     begin    
@@ -273,7 +274,7 @@ always_ff @( posedge S_AXI_ACLK ) begin
     fifo_wr_en <= 1'b0;
     if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
         fifo_din <= {
-            buffer[5],  // r_area
+            buffer[5],  // r_area //Maybe replace with S_AXI_WDATA
             buffer[4],  // color + v3z
             buffer[3],  // v3y + v3x
             buffer[2],  // v2z + v2y
@@ -282,6 +283,8 @@ always_ff @( posedge S_AXI_ACLK ) begin
         };
         fifo_wr_en <= 1'b1;
     end
+  end else if ( S_AXI_ARESETN == 1'b1 ) begin
+      fifo_wr_en <= 'b0;
   end
 end    
 
@@ -546,6 +549,7 @@ logic fifo_srst;
 ///// Configuration
 // Interface type: Native
 // Write/Read Width: 192 (32 * 6)
+// Depth 16 bits
 fifo_generator_0 fifo(
   .clk(S_AXI_ACLK),
   .srst(~S_AXI_ARESETN),
@@ -566,20 +570,27 @@ logic [31:0] inv_area;
 logic [15:0] z1, z2, z3;
 
 // use triangle_ready and triangle_valid signals
-assign triangle_valid = ~fifo_empty;
-assign fifo_rd_en = triangle_valid & triangle_ready;
+always_ff @(posedge S_AXI_ACLK) begin
+  if(~S_AXI_ARESETN) begin
+    triangle_valid <= 1'b0;
+    fifo_rd_en <= 'b0;
+  end else begin
+    fifo_rd_en <= ~fifo_empty & triangle_ready;
+    triangle_valid <= fifo_rd_en;
+  end
+end
 
-assign inv_area = fifo_dout[183:152];
+assign inv_area = fifo_dout[191:160];
 assign color = fifo_dout[151:144];
 assign z3 = fifo_dout[143:128];
-assign v3y = fifo_dout[127:112];
-assign v3x = fifo_dout[111:96];
+assign v3y = fifo_dout[119:112];
+assign v3x = fifo_dout[104:96];
 assign z2 = fifo_dout[95:80];
-assign v2y = fifo_dout[79:64];
-assign v2x = fifo_dout[63:48];
+assign v2y = fifo_dout[71:64];
+assign v2x = fifo_dout[56:48];
 assign z1 = fifo_dout[47:32];
-assign v1y = fifo_dout[31:16];
-assign v1x = fifo_dout[15:0];
+assign v1y = fifo_dout[23:16];
+assign v1x = fifo_dout[8:0];
 
 ////////////////////BEGIN EDGES & BOUNDING BOX STAGE (3 clock cycles)
 //Calculate Edge equations using vertices, and bounding box.

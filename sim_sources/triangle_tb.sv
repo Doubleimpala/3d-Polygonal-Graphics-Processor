@@ -278,7 +278,7 @@ module tb_triangle_pipeline();
             8'hC3,           // Magenta (RGB332: 110_000_11)
             16'd100, 16'd100, 16'd100
         );
-        
+
         draw_triangle(
             9'd50,  8'd300,   // V1 (Left)  Z=10
             9'd250, 8'd300,   // V2 (Right) Z=90
