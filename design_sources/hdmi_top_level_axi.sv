@@ -83,7 +83,7 @@ module hdmi_text_controller_v1_0_AXI #
     output logic  S_AXI_BVALID,
     // // Response ready. This signal indicates that the master
     //     // can accept a write response.
-    input logic  S_AXI_BREADY,
+    input logic  S_AXI_BREADY
     // // Read address (issued by master, acceped by Slave)
     // input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
     // // Protection type. This signal indicates the privilege
@@ -569,17 +569,17 @@ logic [15:0] z1, z2, z3;
 assign triangle_valid = ~fifo_empty;
 assign fifo_rd_en = triangle_valid & triangle_ready;
 
-assign [31:0] inv_area = fifo_dout[183:152];
-assign [7:0] color = fifo_dout[151:144];
-assign [15:0] vertex0 = fifo_dout[143:128];
-assign [15:0] vertex1 = fifo_dout[127:112];
-assign [15:0] vertex2 = fifo_dout[111:96];
-assign [15:0] vertex3 = fifo_dout[95:80];
-assign [15:0] vertex4 = fifo_dout[79:64];
-assign [15:0] vertex5 = fifo_dout[63:48];
-assign [15:0] vertex6 = fifo_dout[47:32];
-assign [15:0] vertex7 = fifo_dout[31:16];
-assign [15:0] vertex8 = fifo_dout[15:0];
+assign inv_area = fifo_dout[183:152];
+assign color = fifo_dout[151:144];
+assign z3 = fifo_dout[143:128];
+assign v3y = fifo_dout[127:112];
+assign v3x = fifo_dout[111:96];
+assign z2 = fifo_dout[95:80];
+assign v2y = fifo_dout[79:64];
+assign v2x = fifo_dout[63:48];
+assign z1 = fifo_dout[47:32];
+assign v1y = fifo_dout[31:16];
+assign v1x = fifo_dout[15:0];
 
 ////////////////////BEGIN EDGES & BOUNDING BOX STAGE (3 clock cycles)
 //Calculate Edge equations using vertices, and bounding box.
