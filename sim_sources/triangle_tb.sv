@@ -278,6 +278,23 @@ module tb_triangle_pipeline();
             8'hC3,           // Magenta (RGB332: 110_000_11)
             16'd100, 16'd100, 16'd100
         );
+        
+        draw_triangle(
+            9'd50,  8'd300,   // V1 (Left)  Z=10
+            9'd250, 8'd300,   // V2 (Right) Z=90
+            9'd50,  8'd400,   // V3 (Left)  Z=10
+            8'h1F,            // Cyan
+            16'd10, 16'd90, 16'd10
+        );
+
+        // Triangle B: Magenta (Slopes Z: High -> Low)
+        draw_triangle(
+            9'd50,  8'd300,   // V1 (Left)  Z=90
+            9'd250, 8'd300,   // V2 (Right) Z=10
+            9'd250, 8'd400,   // V3 (Right) Z=10
+            8'hE3,            // Magenta
+            16'd90, 16'd10, 16'd10
+        );
 
         $display("\nAll triangles submitted. Waiting for display...");
 
