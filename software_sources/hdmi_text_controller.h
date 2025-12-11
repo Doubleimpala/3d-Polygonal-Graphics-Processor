@@ -7,17 +7,26 @@
 #include "xstatus.h"
 #include "xparameters.h"
 
+// Manually pack to 32 bits
 struct DATA {
   uint16_t vertices[9];
   uint8_t color;
   int32_t r_area;
 };
 
-// TODO: SET THIS LATER
-volatile bool vsync;
 
-//TODO: CHANGE THIS
-static volatile struct DATA* data = XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
+// TODO: SET THIS LATER
+volatile bool *vsync;
+
+//TODO: Maybe change this
+// static volatile struct DATA* data = XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
+// addr[0] = v1.y, v1.x
+// addr[1] = v2.x, v1.z
+// addr[2] = v2.z, v1.y
+// addr[3] = v3.y, v3.x
+// addr[4] = color, v3.z
+// addr[5] = r_area
+static volatile uint32_t *addr = (uint32_t *) XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
 
 
 // Cornell Box Mesh
