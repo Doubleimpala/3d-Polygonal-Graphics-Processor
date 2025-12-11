@@ -563,6 +563,8 @@ logic [8:0] v1x, v2x, v3x;
 logic [7:0] v1y, v2y, v3y;
 logic [7:0] color;
 logic [31:0] inv_area;
+logic [15:0] z1, z2, z3;
+
 // use triangle_ready and triangle_valid signals
 assign triangle_valid = ~fifo_empty;
 assign fifo_rd_en = triangle_valid & triangle_ready;
@@ -617,8 +619,7 @@ logic rasterizer_start;
 logic rasterizer_done;
 
 
-//Z coordinates
-logic [15:0] z1, z2, z3;
+
 
 rasterizer raster(
   .clk(S_AXI_ACLK),
