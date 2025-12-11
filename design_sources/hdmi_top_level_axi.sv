@@ -122,6 +122,16 @@ logic  axi_bvalid;
 // logic  	axi_rvalid;
 
 
+//Recieve Triangles into FIFO.
+logic fifo_full;
+logic [191:0] fifo_din;
+logic fifo_wr_en;
+logic fifo_empty;
+logic [191:0] fifo_dout;
+logic fifo_rd_en;
+logic fifo_srst;
+
+
 
 
 //TODO: DELETE THIS logic douta ONCE YOU FINISH FRAME BUFFER TESTBENCH
@@ -535,15 +545,6 @@ blk_mem_gen_1 z_buf(
 
 
 //Triangle logic
-
-//Recieve Triangles into FIFO.
-logic fifo_full;
-logic [191:0] fifo_din;
-logic fifo_wr_en;
-logic fifo_empty;
-logic [191:0] fifo_dout;
-logic fifo_rd_en;
-logic fifo_srst;
 
 
 ///// Configuration
