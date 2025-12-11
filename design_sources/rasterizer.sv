@@ -178,9 +178,9 @@ always_ff @(posedge clk) begin
                 state <= barycentric_normalize;
             end
             barycentric_normalize: begin
-                prod7_raw <= $signed(w1_raw[53:24]) * $signed(z1_use);
-                prod8_raw <= $signed(w2_raw[53:24]) * $signed(z2_use);
-                prod9_raw <= $signed(w3_raw[53:24]) * $signed(z3_use);
+                prod7_raw <= $signed(w1_raw[29:0]) * $signed(z1_use);
+                prod8_raw <= $signed(w2_raw[29:0]) * $signed(z2_use);
+                prod9_raw <= $signed(w3_raw[29:0]) * $signed(z3_use);
                 state <= comp_z;
             end
             comp_z: begin
