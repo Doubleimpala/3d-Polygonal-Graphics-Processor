@@ -181,7 +181,7 @@ always_ff @(posedge clk) begin
                 prod7_raw <= $signed(w1_raw[53:24]) * $signed(z1_use);
                 prod8_raw <= $signed(w2_raw[53:24]) * $signed(z2_use);
                 prod9_raw <= $signed(w3_raw[53:24]) * $signed(z3_use);
-                state <= comp_z_prods;
+                state <= comp_z;
             end
             comp_z: begin
                 z_calc <= prod7_raw + prod8_raw + prod9_raw;
