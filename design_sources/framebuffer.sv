@@ -70,6 +70,10 @@ assign frontbuf_enb = 'b1;
 assign backbuf_enb = 'b1;
 
 //Make frame buffer here.
+//True Dual Port
+//Byte Write Enable (8 bit bytes)
+//Write width: 8
+//Write depth: >= 768000
 //320 * 240 * 1 B = 76.8 kB
 //width: 8 bits (8-bit colorspace)
 blk_mem_gen_0 front_buffer(

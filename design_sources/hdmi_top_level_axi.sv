@@ -529,6 +529,11 @@ always_comb begin
     zbuf_we = zbuf_we_raster;
   end
 end
+
+//Single Port
+//Byte Write Enable (8 bit bytes)
+//Write width: 8
+//Write depth: >= 768000
 // 320 * 240 * 1 B = 76.8 kB
 // width: 8 bits
 // Make sure to initialize each cell to the maximum integer

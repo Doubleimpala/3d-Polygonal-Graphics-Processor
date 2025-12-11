@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `define SIM_VIDEO // Comment out to skip BMP generation
 
-module tb_triangle_pipeline();
+module tb_axi_triangle_pipeline();
 
     // =========================================================================
     // Clock & Reset
@@ -50,7 +50,7 @@ module tb_triangle_pipeline();
         .axi_wready(write_data_ready),
         .axi_bresp(write_resp),
         .axi_bvalid(write_resp_valid),
-        .axi_bready(write_resp_ready),
+        .axi_bready(write_resp_ready)
     );
 
     // =========================================================================
@@ -179,7 +179,7 @@ module tb_triangle_pipeline();
         input logic [8:0] x2, input logic [7:0] y2,
         input logic [8:0] x3, input logic [7:0] y3,
         input logic [7:0] color_in,
-        input logic [15:0] z1_in, z2_in, z3_in
+        input logic [15:0] z1, z2, z3
     );
         int area_x2;
         real inv_area_real;
@@ -204,7 +204,7 @@ module tb_triangle_pipeline();
             inv_area_fixed = $unsigned(inv_area_real);
 
             $display("Drawing Triangle: (%0d,%0d), (%0d,%0d), (%0d,%0d) Color:%h Z:(%0d,%0d,%0d)",
-                     x1,y1, x2,y2, x3,y3, color_in, z1_in, z2_in, z3_in);
+                     x1,y1, x2,y2, x3,y3, color_in, z1, z2, z3);
             $display("  Area*2=%0d, inv_area=0x%h", area_x2, inv_area_fixed);
 
             // Pack triangle data into 6 words (192 bits)
@@ -381,9 +381,9 @@ module tb_triangle_pipeline();
     initial begin
         forever begin
             @(posedge aclk);
-            if (axi_awvalid && axi_awready && axi_wvalid && axi_wready)
+            if (write_addr_valid && write_addr_ready && write_data_valid && write_data_ready)
                 $display("%0t\tAXI WRITE: addr=0x%03x data=0x%08x", 
-                         $time, axi_awaddr, axi_wdata);
+                         $time, write_addr, write_data);
         end
     end
     

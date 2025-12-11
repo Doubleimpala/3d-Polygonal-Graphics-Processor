@@ -14,24 +14,14 @@ module tb_triangle_pipeline();
     // AXI signals (tied off)
     // =========================================================================
     logic [13:0] axi_awaddr = 14'd0;
-    logic [2:0] axi_awprot = 3'd0;
     logic axi_awvalid = 1'b0;
     logic axi_awready;
     logic [31:0] axi_wdata = 32'd0;
-    logic [3:0] axi_wstrb = 4'd0;
     logic axi_wvalid = 1'b0;
     logic axi_wready;
     logic [1:0] axi_bresp;
     logic axi_bvalid;
     logic axi_bready = 1'b0;
-    logic [13:0] axi_araddr = 14'd0;
-    logic [2:0] axi_arprot = 3'd0;
-    logic axi_arvalid = 1'b0;
-    logic axi_arready;
-    logic [31:0] axi_rdata;
-    logic [1:0] axi_rresp;
-    logic axi_rvalid;
-    logic axi_rready = 1'b0;
 
     // =========================================================================
     // HDMI outputs
@@ -53,24 +43,14 @@ module tb_triangle_pipeline();
         .axi_aclk(aclk),
         .axi_aresetn(arstn),
         .axi_awaddr(axi_awaddr),
-        .axi_awprot(axi_awprot),
         .axi_awvalid(axi_awvalid),
         .axi_awready(axi_awready),
         .axi_wdata(axi_wdata),
-        .axi_wstrb(axi_wstrb),
         .axi_wvalid(axi_wvalid),
         .axi_wready(axi_wready),
         .axi_bresp(axi_bresp),
         .axi_bvalid(axi_bvalid),
-        .axi_bready(axi_bready),
-        .axi_araddr(axi_araddr),
-        .axi_arprot(axi_arprot),
-        .axi_arvalid(axi_arvalid),
-        .axi_arready(axi_arready),
-        .axi_rdata(axi_rdata),
-        .axi_rresp(axi_rresp),
-        .axi_rvalid(axi_rvalid),
-        .axi_rready(axi_rready)
+        .axi_bready(axi_bready)
     );
 
     // =========================================================================
