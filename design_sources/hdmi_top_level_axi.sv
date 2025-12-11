@@ -50,7 +50,7 @@ module hdmi_text_controller_v1_0_AXI #
     // Global Clock Signal
     input logic  S_AXI_ACLK,
     // Global Reset Signal. This Signal is Active LOW
-    input logic  S_AXI_ARESETN
+    input logic  S_AXI_ARESETN,
     // Write address (issued by master, acceped by Slave)
     input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
     // // Write channel Protection type. This signal indicates the
