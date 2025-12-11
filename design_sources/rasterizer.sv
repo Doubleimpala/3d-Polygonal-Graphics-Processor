@@ -100,12 +100,8 @@ logic signed [37:0] prod7_raw;
 logic signed [37:0] prod8_raw;
 logic signed [37:0] prod9_raw;
 
-logic signed [13:0] prod7;
-logic signed [13:0] prod8;
-logic signed [13:0] prod9;
-
 //Interpolated Z calculations. We only store "z" in the buffer which is the shifted version of "z_calc"
-logic signed [14:0] z_calc;
+logic signed [38:0] z_calc;
 logic [7:0] z;
 
 logic signed [8:0] z1_use, z2_use, z3_use;
@@ -122,7 +118,6 @@ enum logic [3:0] {
     inside_check,
     barycentric,
     barycentric_normalize,
-    comp_z_prods,
     comp_z,
     buf_addressing,
     read_zbuf,
@@ -188,18 +183,12 @@ always_ff @(posedge clk) begin
                 prod9_raw <= $signed(w3_raw[53:24]) * $signed(z3_use);
                 state <= comp_z_prods;
             end
-            comp_z_prods: begin
-                prod7 <= prod7_raw[37:24];
-                prod8 <= prod8_raw[37:24];
-                prod9 <= prod9_raw[37:24];
-                state <= comp_z;
-            end
             comp_z: begin
-                z_calc <= prod7 + prod8 + prod9;
+                z_calc <= prod7_raw + prod8_raw + prod9_raw;
                 state <= buf_addressing;
             end
             buf_addressing: begin
-                z <= z_calc[7:0];
+                z <= z_calc[31:24];
                 zbuf_addr <= y*320 + x;
                 addr_gpu <= y*320 + x;
                 state <= read_zbuf;
