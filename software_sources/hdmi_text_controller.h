@@ -8,15 +8,15 @@
 #include "xparameters.h"
 
 // Manually pack to 32 bits
-struct DATA {
+typedef struct {
   uint16_t vertices[9];
   uint8_t color;
   int32_t r_area;
-};
+} DATA;
 
 
 // TODO: SET THIS LATER
-volatile bool *vsync;
+//volatile bool *vsync;
 
 //TODO: Maybe change this
 // static volatile struct DATA* data = XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR;
@@ -74,7 +74,6 @@ static const uint8_t cornell_box[][10] = {
     {204,0,179,   204,128,179,   204,128,230,   0xFF},
     {204,0,179,   204,128,230,   204,0,230,   0xFF},
 };
-#define cornell_box_triangle_count (sizeof(cornell_box) / sizeof(cornell_box[0]))
 
 static const int cornell_box_triangle_count =
     sizeof(cornell_box)/sizeof(cornell_box[0]);

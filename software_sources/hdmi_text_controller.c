@@ -4,11 +4,11 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-#include <cstdlib>
-#include <math.h>
+// #include <cstdlib>
+#include "math.h"
 
 // TODO: Maybe unroll and use restrict keyword
-__inline__ void matmul4x4(const float in1[16], const float in2[16],
+void matmul4x4(const float in1[16], const float in2[16],
                           float out_mat[16]) {
   for (int r = 0; r < 4; r++) {
     for (int c = 0; c < 4; c++) {
@@ -24,7 +24,7 @@ __inline__ void matmul4x4(const float in1[16], const float in2[16],
 }
 
 // TODO: Unroll this?
-__inline__ void matvec4x1(const float mat[16], const float vec[4],
+void matvec4x1(const float mat[16], const float vec[4],
                           float *out_vec) {
   for (int mat_r = 0; mat_r < 4; mat_r++) {
     float dot = 0.0f;
@@ -89,8 +89,8 @@ int main() {
     for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
       DATA data;
 
-      if (!*vsync)
-        break;
+/*      if (!*vsync)
+        break;*/
 
       float world_vec1[4] = {(float)cornell_box[i][0], (float)cornell_box[i][1],
                              (float)cornell_box[i][2], 1.0f};
@@ -169,6 +169,8 @@ int main() {
         data.vertices[3 * i] = (uint16_t)((vecs[i][0] + 1.0f) * 160.0f);
         data.vertices[3 * i + 1] = (uint16_t)((1.0f - vecs[i][1]) * 120.0f);
         data.vertices[3 * i + 2] = (uint16_t)(vecs[i][2] * 255.0f);
+
+        xil_printf("Calculating Vertices");
       }
 
       int x1 = data.vertices[0];
@@ -193,6 +195,6 @@ int main() {
       addr[5] = (uint32_t)data.r_area;
     }
 
-    while (*vsync);
+/*    while (*vsync);*/
   }
 }
