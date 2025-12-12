@@ -5,7 +5,8 @@
 #include "stdlib.h"
 #include "string.h"
 // #include <cstdlib>
-#include "math.h"
+// #include "math.h"
+#include "platform.h"
 
 // TODO: Maybe unroll and use restrict keyword
 void matmul4x4(const float in1[16], const float in2[16],
@@ -37,164 +38,178 @@ void matvec4x1(const float mat[16], const float vec[4],
   }
 }
 
-// TODO: Have to store orientation of camera as well
-int main() {
-  // Yaw is rotation about vertical axis
-  // TODO: Proper initialization values
-  float cam_x = 127.5f, cam_y = 127.5f, cam_z = -50.0f;
-  float yaw = 0; // in radians
+int main()
+{
+    init_platform();   // initializes stdout (UART) and BSP drivers
 
-  while (1) {
-    // TODO: Keyboard or fpga button control for camera movement
-    // TODO: Consider 16-bit fixed point format
+    xil_printf("Entering main\r\n");
 
-    // Calculate Project @ View
-    // One matmul and then one matvec mutiply per vertice
+    float cam_x = 127.5f, cam_y = 127.5f, cam_z = -50.0f;
+    float yaw = 0; // in radians
 
-    // ===== VIEW MATRIX =====
-    // View = Translate(-camera_pos) × RotateY(yaw)
-    float cos_yaw = cosf(yaw);
-    float sin_yaw = sinf(yaw);
+    while(1) {
+    	float a = 1.0f;
+    	float b = 1.0f;
+    	float c = cos_lookup(a);
+		// TODO: Keyboard or fpga button control for camera movement
+		// TODO: Consider 16-bit fixed point format
 
-    // Pre-compute translation components
-    float tx = -(cos_yaw * cam_x + sin_yaw * cam_z);
-    float ty = -cam_y;
-    float tz = -(-sin_yaw * cam_x + cos_yaw * cam_z);
-    const float view_mat[16] = {cos_yaw, 0.0f, sin_yaw,  tx,   0.0f,    1.0f,
-                                0.0f,    ty,   -sin_yaw, 0.0f, cos_yaw, tz,
-                                0.0f,    0.0f, 0.0f,     1.0f};
+		// Calculate Project @ View
+		// One matmul and then one matvec mutiply per vertice
 
-    // ===== PROJECTION MATRIX (for [0, 1] depth) =====
-    // Pre-computed for:
-    // - FOV: 60 degrees
-    // - Aspect ratio: 320/240 = 4/3
-    // - Near plane: 1.0
-    // - Far plane: 300.0 (to see entire Cornell box at z=0..255)
-    //
-    // Formula:
-    // f = 1/tan(60°/2) = 1/tan(30°) ≈ 1.732
-    // m[0][0] = f/aspect = 1.732 / (4/3) = 1.299
-    // m[1][1] = f = 1.732
-    // m[2][2] = far/(far-near) = 300/(300-1) ≈ 1.003
-    // m[2][3] = -(far*near)/(far-near) = -300*1/299 ≈ -1.003
-    // m[3][2] = 1.0 (for [0,1] depth, not -1.0)
-    const float proj_mat[16] = {1.299f, 0.0f, 0.0f, 0.0f, 0.0f,   1.732f,
-                                0.0f,   0.0f, 0.0f, 0.0f, 1.003f, -1.003f,
-                                0.0f,   0.0f, 1.0f, 0.0f};
+		// ===== VIEW MATRIX =====
+		// View = Translate(-camera_pos) × RotateY(yaw)
+		float cos_yaw = cos_lookup(yaw);
+		float sin_yaw = sin_lookup(yaw);
 
-    float proj_view_mat[16];
-    matmul4x4(proj_mat, view_mat, proj_view_mat);
+		// Pre-compute translation components
+		float tx = -(cos_yaw * cam_x + sin_yaw * cam_z);
+		float ty = -cam_y;
+		float tz = -(-sin_yaw * cam_x + cos_yaw * cam_z);
+		const float view_mat[16] = {cos_yaw, 0.0f, sin_yaw,  tx,   0.0f,    1.0f,
+									0.0f,    ty,   -sin_yaw, 0.0f, cos_yaw, tz,
+									0.0f,    0.0f, 0.0f,     1.0f};
 
-    // TODO: Look into culling (frustram, backface, occlusion, etc.)
-    for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
-      DATA data;
+		// ===== PROJECTION MATRIX (for [0, 1] depth) =====
+		// Pre-computed for:
+		// - FOV: 60 degrees
+		// - Aspect ratio: 320/240 = 4/3
+		// - Near plane: 1.0
+		// - Far plane: 300.0 (to see entire Cornell box at z=0..255)
+		//
+		// Formula:
+		// f = 1/tan(60°/2) = 1/tan(30°) ≈ 1.732
+		// m[0][0] = f/aspect = 1.732 / (4/3) = 1.299
+		// m[1][1] = f = 1.732
+		// m[2][2] = far/(far-near) = 300/(300-1) ≈ 1.003
+		// m[2][3] = -(far*near)/(far-near) = -300*1/299 ≈ -1.003
+		// m[3][2] = 1.0 (for [0,1] depth, not -1.0)
+		const float proj_mat[16] = {1.299f, 0.0f, 0.0f, 0.0f, 0.0f,   1.732f,
+									0.0f,   0.0f, 0.0f, 0.0f, 1.003f, -1.003f,
+									0.0f,   0.0f, 1.0f, 0.0f};
 
-/*      if (!*vsync)
-        break;*/
+		float proj_view_mat[16];
+		matmul4x4(proj_mat, view_mat, proj_view_mat);
+		// TODO: Look into culling (frustram, backface, occlusion, etc.)
+		for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
+		  DATA data;
 
-      float world_vec1[4] = {(float)cornell_box[i][0], (float)cornell_box[i][1],
-                             (float)cornell_box[i][2], 1.0f};
+		  //if (!*vsync)
+		  //  break;
 
-      float world_vec2[4] = {(float)cornell_box[i][3], (float)cornell_box[i][4],
-                             (float)cornell_box[i][5], 1.0f};
+		  float world_vec1[4] = {(float)cornell_box[i][0], (float)cornell_box[i][1],
+								 (float)cornell_box[i][2], 1.0f};
 
-      float world_vec3[4] = {(float)cornell_box[i][6], (float)cornell_box[i][7],
-                             (float)cornell_box[i][8], 1.0f};
+		  float world_vec2[4] = {(float)cornell_box[i][3], (float)cornell_box[i][4],
+								 (float)cornell_box[i][5], 1.0f};
 
-      // Backface Culling
-      // Calculate two edges
-      float edge1[3] = {world_vec2[0] - world_vec1[0],
-                        world_vec2[1] - world_vec1[1],
-                        world_vec2[2] - world_vec1[2]};
+		  float world_vec3[4] = {(float)cornell_box[i][6], (float)cornell_box[i][7],
+								 (float)cornell_box[i][8], 1.0f};
 
-      float edge2[3] = {world_vec3[0] - world_vec1[0],
-                        world_vec3[1] - world_vec1[1],
-                        world_vec3[2] - world_vec1[2]};
+		  // Backface Culling
+		  // Calculate two edges
+		  float edge1[3] = {world_vec2[0] - world_vec1[0],
+							world_vec2[1] - world_vec1[1],
+							world_vec2[2] - world_vec1[2]};
 
-      // Cross product to get normal
-      float normal[3] = {edge1[1] * edge2[2] - edge1[2] * edge2[1],
-                         edge1[2] * edge2[0] - edge1[0] * edge2[2],
-                         edge1[0] * edge2[1] - edge1[1] * edge2[0]};
+		  float edge2[3] = {world_vec3[0] - world_vec1[0],
+							world_vec3[1] - world_vec1[1],
+							world_vec3[2] - world_vec1[2]};
 
-      // Vector from triangle to camera
-      float to_camera[3] = {cam_x - world_vec1[0], cam_y - world_vec1[1],
-                            cam_z - world_vec1[2]};
+		  // Cross product to get normal
+		  float normal[3] = {edge1[1] * edge2[2] - edge1[2] * edge2[1],
+							 edge1[2] * edge2[0] - edge1[0] * edge2[2],
+							 edge1[0] * edge2[1] - edge1[1] * edge2[0]};
 
-      // Dot product
-      float dot = normal[0] * to_camera[0] + normal[1] * to_camera[1] +
-                  normal[2] * to_camera[2];
+		  // Vector from triangle to camera
+		  float to_camera[3] = {cam_x - world_vec1[0], cam_y - world_vec1[1],
+								cam_z - world_vec1[2]};
 
-      // Cull if facing away
-      if (dot < 0.0f) {
-        continue; // Skip this triangle
-      }
+		  // Dot product
+		  float dot = normal[0] * to_camera[0] + normal[1] * to_camera[1] +
+					  normal[2] * to_camera[2];
 
-      float vec1[4], vec2[4], vec3[4];
+		  // Cull if facing away
+		  if (dot < 0.0f) {
+			continue; // Skip this triangle
+		  }
 
-      // Transforms to clip space (before perspective divide)
-      matvec4x1(proj_view_mat, world_vec1, vec1);
-      matvec4x1(proj_view_mat, world_vec2, vec2);
-      matvec4x1(proj_view_mat, world_vec3, vec3);
+		  float vec1[4], vec2[4], vec3[4];
 
-      // Test if ALL vertices are outside the SAME frustum plane
-      int8_t all_left =
-          (vec1[0] < -vec1[3] && vec2[0] < -vec2[3] && vec3[0] < -vec3[3]);
-      int8_t all_right =
-          (vec1[0] > vec1[3] && vec2[0] > vec2[3] && vec3[0] > vec3[3]);
-      int8_t all_bottom =
-          (vec1[1] < -vec1[3] && vec2[1] < -vec2[3] && vec3[1] < -vec3[3]);
-      int8_t all_top =
-          (vec1[1] > vec1[3] && vec2[1] > vec2[3] && vec3[1] > vec3[3]);
-      int8_t all_near =
-          (vec1[2] < 0 && vec2[2] < 0 && vec3[2] < 0); // (behind camera)
-      int8_t all_far =
-          (vec1[2] > vec1[3] && vec2[2] > vec2[3] && vec3[2] > vec3[3]);
+		  // Transforms to clip space (before perspective divide)
+		  matvec4x1(proj_view_mat, world_vec1, vec1);
+		  matvec4x1(proj_view_mat, world_vec2, vec2);
+		  matvec4x1(proj_view_mat, world_vec3, vec3);
+//
+//		  // Test if ALL vertices are outside the SAME frustum plane
+		  int8_t all_left =
+			  (vec1[0] < -vec1[3] && vec2[0] < -vec2[3] && vec3[0] < -vec3[3]);
+		  int8_t all_right =
+			  (vec1[0] > vec1[3] && vec2[0] > vec2[3] && vec3[0] > vec3[3]);
+		  int8_t all_bottom =
+			  (vec1[1] < -vec1[3] && vec2[1] < -vec2[3] && vec3[1] < -vec3[3]);
+		  int8_t all_top =
+			  (vec1[1] > vec1[3] && vec2[1] > vec2[3] && vec3[1] > vec3[3]);
+		  int8_t all_near =
+			  (vec1[2] < 0 && vec2[2] < 0 && vec3[2] < 0); // (behind camera)
+		  int8_t all_far =
+			  (vec1[2] > vec1[3] && vec2[2] > vec2[3] && vec3[2] > vec3[3]);
 
-      // Cull this triangle - completely outside frustum
-      if (all_left || all_right || all_bottom || all_top || all_near || all_far)
-        continue;
+		  // Cull this triangle - completely outside frustum
+		  if (all_left || all_right || all_bottom || all_top || all_near || all_far)
+			continue;
 
-      // Check for degenerate w
-      if (vec1[3] <= 0.0001f || vec2[3] <= 0.0001f || vec3[3] <= 0.0001f)
-        continue;
+		  // Check for degenerate w
+		  if (vec1[3] <= 0.0001f || vec2[3] <= 0.0001f || vec3[3] <= 0.0001f)
+			continue;
 
-      data.color = cornell_box[i][9];
-      float *vecs[3] = {vec1, vec2, vec3};
-      for (int i = 0; i < 3; i++) {
-        // Perspective divide
-        vecs[i][0] /= vecs[i][3];
-        vecs[i][1] /= vecs[i][3];
-        vecs[i][2] /= vecs[i][3];
+		  data.color = cornell_box[i][9];
+		  float *vecs[3] = {vec1, vec2, vec3};
+		  for (int i = 0; i < 3; i++) {
+			// Perspective divide
+			vecs[i][0] /= vecs[i][3];
+			vecs[i][1] /= vecs[i][3];
+			vecs[i][2] /= vecs[i][3];
 
-        data.vertices[3 * i] = (uint16_t)((vecs[i][0] + 1.0f) * 160.0f);
-        data.vertices[3 * i + 1] = (uint16_t)((1.0f - vecs[i][1]) * 120.0f);
-        data.vertices[3 * i + 2] = (uint16_t)(vecs[i][2] * 255.0f);
 
-        xil_printf("Calculating Vertices");
-      }
+			data.vertices[3 * i] = (uint16_t) ((vecs[i][0] + 1.0f) * 160.0f);
+			data.vertices[3 * i + 1] = (uint16_t) ((1.0f - vecs[i][1]) * 120.0f);
+			data.vertices[3 * i + 2] = (uint16_t) (vecs[i][2] * 255.0f);
 
-      int x1 = data.vertices[0];
-      int y1 = data.vertices[1];
-      int x2 = data.vertices[3];
-      int y2 = data.vertices[4];
-      int x3 = data.vertices[6];
-      int y3 = data.vertices[7];
+//			xil_printf("V%d x: %u\r\n", i, data.vertices[3 * i]);
+//			xil_printf("V%d y: %u\r\n", i, data.vertices[3 * i + 1]);
+//			xil_printf("V%d z: %u\r\n", i, data.vertices[3 * i + 2]);
+		  }
 
-      float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
-      if (r_area < 0) r_area *= -1;
+		  uint32_t x1 = data.vertices[0];
+		  uint32_t y1 = data.vertices[1];
+		  uint32_t x2 = data.vertices[3];
+		  uint32_t y2 = data.vertices[4];
+		  uint32_t x3 = data.vertices[6];
+		  uint32_t y3 = data.vertices[7];
 
-      // Turn into 8.24 fixed point
-      data.r_area = (int32_t) r_area * (1 << 24);
+		  float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
+		  if (r_area < 0) r_area *= -1;
 
-      // Copy into AXI/FIFO, pack into 32 bit words to avoid write strobe
-      addr[0] = ((uint32_t)data.vertices[1] << 16) | data.vertices[0];
-      addr[1] = ((uint32_t)data.vertices[3] << 16) | data.vertices[2];
-      addr[2] = ((uint32_t)data.vertices[5] << 16) | data.vertices[4];
-      addr[3] = ((uint32_t)data.vertices[7] << 16) | data.vertices[6];
-      addr[4] = ((uint32_t)data.color << 16) | data.vertices[8];
-      addr[5] = (uint32_t)data.r_area;
+		  // Turn into 8.24 fixed point
+		  data.r_area = (int32_t) r_area * (1 << 24);
+
+		  // Copy into AXI/FIFO, pack into 32 bit words to avoid write strobe
+		  addr[0] = (data.vertices[1] << 16) | data.vertices[0];
+		  addr[1] = (data.vertices[3] << 16) | data.vertices[2];
+		  addr[2] = (data.vertices[5] << 16) | data.vertices[4];
+		  addr[3] = (data.vertices[7] << 16) | data.vertices[6];
+		  addr[4] = (data.color << 16) | data.vertices[8];
+		  addr[5] = data.r_area;
+
+//		  xil_printf("Color: %d\r\n", data.color);
+//		  xil_printf("Inverse area (hex): %X", data.r_area);
+
+		}
+
+		//while (*vsync);
     }
 
-/*    while (*vsync);*/
-  }
+    cleanup_platform();
+    return 0;
 }
