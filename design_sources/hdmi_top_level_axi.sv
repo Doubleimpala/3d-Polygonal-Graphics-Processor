@@ -580,14 +580,19 @@ logic [7:0] color;
 logic [31:0] inv_area;
 logic [15:0] z1, z2, z3;
 
+logic triangle_ready_prev;
+always_ff @(posedge S_AXI_ACLK) begin
+    triangle_ready_prev <= triangle_ready;
+end
+
 // use triangle_ready and triangle_valid signals
 always_ff @(posedge S_AXI_ACLK) begin
   if(~S_AXI_ARESETN) begin
     triangle_valid <= 1'b0;
     fifo_rd_en <= 'b0;
   end else begin
-    fifo_rd_en <= ~fifo_empty & triangle_ready;
-    triangle_valid <= ~fifo_empty & triangle_ready;
+    fifo_rd_en <= ~fifo_empty & triangle_ready & ~triangle_ready_prev;
+    triangle_valid <= ~fifo_empty & triangle_ready & ~triangle_ready_prev;
   end
 end
 
