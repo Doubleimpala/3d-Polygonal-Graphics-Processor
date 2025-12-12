@@ -289,7 +289,7 @@ always_ff @( posedge S_AXI_ACLK ) begin
     fifo_wr_en <= 1'b0;
     if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
         fifo_din <= {
-            S_AXI_WDATA,  // r_area //Maybe replace with S_AXI_WDATA
+            S_AXI_WDATA,  // r_area
             buffer[4],  // color + v3z
             buffer[3],  // v3y + v3x
             buffer[2],  // v2z + v2y
@@ -587,7 +587,7 @@ always_ff @(posedge S_AXI_ACLK) begin
     fifo_rd_en <= 'b0;
   end else begin
     fifo_rd_en <= ~fifo_empty & triangle_ready;
-    triangle_valid <= fifo_rd_en;
+    triangle_valid <= ~fifo_empty & triangle_ready;
   end
 end
 
