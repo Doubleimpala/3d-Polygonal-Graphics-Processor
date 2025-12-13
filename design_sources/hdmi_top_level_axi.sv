@@ -34,7 +34,7 @@ module hdmi_text_controller_v1_0_AXI #
     // Width of S_AXI data bus
     parameter integer C_S_AXI_DATA_WIDTH	= 32,
     // Width of S_AXI address bus
-    parameter integer C_S_AXI_ADDR_WIDTH	= 16
+    parameter integer C_S_AXI_ADDR_WIDTH	= 5
 )
 (
     // Users to add ports here
@@ -56,7 +56,7 @@ module hdmi_text_controller_v1_0_AXI #
     // // Write channel Protection type. This signal indicates the
     //     // privilege and security level of the transaction, and whether
     //     // the transaction is a data access or an instruction access.
-    // input logic [2 : 0] S_AXI_AWPROT,
+     input logic [2 : 0] S_AXI_AWPROT,
     // // Write address valid. This signal indicates that the master signaling
     //     // valid write address and control information.
     input logic  S_AXI_AWVALID,
@@ -68,7 +68,7 @@ module hdmi_text_controller_v1_0_AXI #
     // // Write strobes. This signal indicates which byte lanes hold
     //     // valid data. There is one write strobe bit for each eight
     //     // bits of the write data bus.    
-    // input logic [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
+     input logic [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
     // // Write valid. This signal indicates that valid write
     //     // data and strobes are available.
     input logic  S_AXI_WVALID,
@@ -83,30 +83,30 @@ module hdmi_text_controller_v1_0_AXI #
     output logic  S_AXI_BVALID,
     // // Response ready. This signal indicates that the master
     //     // can accept a write response.
-    input logic  S_AXI_BREADY
+    input logic  S_AXI_BREADY,
     // // Read address (issued by master, acceped by Slave)
-    // input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
+    input logic [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
     // // Protection type. This signal indicates the privilege
     //     // and security level of the transaction, and whether the
     //     // transaction is a data access or an instruction access.
-    // input logic [2 : 0] S_AXI_ARPROT,
+     input logic [2 : 0] S_AXI_ARPROT,
     // // Read address valid. This signal indicates that the channel
     //     // is signaling valid read address and control information.
-    // input logic  S_AXI_ARVALID,
+     input logic  S_AXI_ARVALID,
     // // Read address ready. This signal indicates that the slave is
     //     // ready to accept an address and associated control signals.
-    // output logic  S_AXI_ARREADY,
+     output logic  S_AXI_ARREADY,
     // // Read data (issued by slave)
-    // output logic [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_RDATA,
+     output logic [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_RDATA,
     // // Read response. This signal indicates the status of the
     //     // read transfer.
-    // output logic [1 : 0] S_AXI_RRESP,
+     output logic [1 : 0] S_AXI_RRESP,
     // // Read valid. This signal indicates that the channel is
     //     // signaling the required read data.
-    // output logic  S_AXI_RVALID,
+     output logic  S_AXI_RVALID,
     // // Read ready. This signal indicates that the master can
     //     // accept the read data and response information.
-    // input logic  S_AXI_RREADY
+     input logic  S_AXI_RREADY
 );
 
 // AXI4LITE signals
@@ -115,11 +115,11 @@ logic  axi_awready;
 logic  axi_wready;
 logic  [1 : 0] 	axi_bresp;
 logic  axi_bvalid;
-// logic  [C_S_AXI_ADDR_WIDTH - 1 : 0] 	axi_araddr;
-// logic  axi_arready;
-// logic  [C_S_AXI_DATA_WIDTH - 1 : 0] 	axi_rdata;
-// logic  [1 : 0] 	axi_rresp;
-// logic  	axi_rvalid;
+ logic  [C_S_AXI_ADDR_WIDTH - 1 : 0] 	axi_araddr;
+ logic  axi_arready;
+ logic  [C_S_AXI_DATA_WIDTH - 1 : 0] 	axi_rdata;
+ logic  [1 : 0] 	axi_rresp;
+ logic  	axi_rvalid;
 
 
 //Recieve Triangles into FIFO.
@@ -142,6 +142,7 @@ always_ff @(posedge S_AXI_ACLK) begin
     vsync_sync1 <= vsync;
     vsync_sync2 <= vsync_sync1;
 end
+
 
 
 
@@ -169,12 +170,12 @@ logic douta;
 // logic [31:0] control_regs[3];
 
 
-logic [C_S_AXI_ADDR_WIDTH - 1:0] addr_write;
+//logic [C_S_AXI_ADDR_WIDTH - 1:0] addr_write;
 // logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_write;
 // logic [C_S_AXI_ADDR_WIDTH - 3:0] addr_read;
 
 // integer	 byte_index;
-logic	 aw_en;
+//logic	 aw_en;
 
 
 // logic [1:0] rcounter;
@@ -182,7 +183,31 @@ logic	 aw_en;
 // logic rcounterreset;
 // logic [1:0] wcounter;
 
-
+// Example-specific design signals
+// local parameter for addressing 32 bit / 64 bit C_S_AXI_DATA_WIDTH
+// ADDR_LSB is used for addressing 32/64 bit registers/memories
+// ADDR_LSB = 2 for 32 bits (n downto 2)
+// ADDR_LSB = 3 for 64 bits (n downto 3)
+localparam integer ADDR_LSB = (C_S_AXI_DATA_WIDTH/32) + 1;
+localparam integer OPT_MEM_ADDR_BITS = 2;
+//----------------------------------------------
+//-- Signals for user logic register space example
+//------------------------------------------------
+//-- Number of Slave Registers 4
+//logic [C_S_AXI_DATA_WIDTH-1:0]	slv_reg0;
+//logic [C_S_AXI_DATA_WIDTH-1:0]	slv_reg1;
+//logic [C_S_AXI_DATA_WIDTH-1:0]	slv_reg2;
+//logic [C_S_AXI_DATA_WIDTH-1:0]	slv_reg3;
+//
+//Note: the provided Verilog template had the registered declared as above, but in order to give 
+//students a hint we have replaced the 4 individual registers with an unpacked array of packed logic. 
+//Note that you as the student will still need to extend this to the full register set needed for the lab.
+logic [C_S_AXI_DATA_WIDTH-1:0] slv_regs[2 ** (C_S_AXI_ADDR_WIDTH - 2)];
+logic	 slv_reg_rden;
+logic	 slv_reg_wren;
+logic [C_S_AXI_DATA_WIDTH-1:0]	 reg_data_out;
+integer	 byte_index;
+logic	 aw_en;
 
 // I/O Connections assignments
 
@@ -190,10 +215,10 @@ assign S_AXI_AWREADY	= axi_awready;
 assign S_AXI_WREADY	= axi_wready;
 assign S_AXI_BRESP	= axi_bresp;
 assign S_AXI_BVALID	= axi_bvalid;
-// assign S_AXI_ARREADY = axi_arready;
-// assign S_AXI_RDATA	= axi_rdata;
-// assign S_AXI_RRESP	= axi_rresp;
-// assign S_AXI_RVALID	= axi_rvalid;
+assign S_AXI_ARREADY = axi_arready;
+assign S_AXI_RDATA	= axi_rdata;
+assign S_AXI_RRESP	= axi_rresp;
+assign S_AXI_RVALID	= axi_rvalid;
 // Implement axi_awready generation
 // axi_awready is asserted for one S_AXI_ACLK clock cycle when both
 // S_AXI_AWVALID and S_AXI_WVALID are asserted. axi_awready is
@@ -285,30 +310,44 @@ end
 // These registers are cleared when reset (active low) is applied.
 // Slave register write enable is asserted when valid address and data are available
 // and the slave is ready to accept the write address and write data.
-logic [31:0] buffer [5];
-logic buffer_wr_en;
-assign buffer_wr_en = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID && ~axi_bvalid;
-always_ff @( posedge S_AXI_ACLK ) begin
-  if ( S_AXI_ARESETN == 1'b0) begin
-        fifo_wr_en <= 1'b0;
-  end else if ( buffer_wr_en ) begin
-    buffer[axi_awaddr[4:2]] <= S_AXI_WDATA;
 
-    fifo_wr_en <= 1'b0;
-    if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
-        fifo_din <= {
-            S_AXI_WDATA,  // r_area
-            buffer[4],  // color + v3z
-            buffer[3],  // v3y + v3x
-            buffer[2],  // v2z + v2y
-            buffer[1],  // v2x + v1z
-            buffer[0]   // v1y + v1x
-        };
-        fifo_wr_en <= 1'b1;
+assign slv_reg_wren = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID;
+always_ff @( posedge S_AXI_ACLK )
+begin
+ if ( S_AXI_ARESETN == 1'b0 )
+   begin
+       fifo_wr_en <= 1'b0;
+       for (integer i = 0; i < 2 ** (C_S_AXI_ADDR_WIDTH - 2); i++)
+       begin
+           slv_regs[i] <= 0;
+       end
+   end
+ else begin
+   if (slv_reg_wren)
+     begin
+       fifo_wr_en <= 1'b0;
+       if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
+           fifo_wr_en <= 1'b1;
+           fifo_din <= {
+               S_AXI_WDATA,  // r_area
+               slv_regs[4],  // color + v3z
+               slv_regs[3],  // v3y + v3x
+               slv_regs[2],  // v2z + v2y
+               slv_regs[1],  // v2x + v1z
+               slv_regs[0]   // v1y + v1x
+           };
+       end
+        
+       for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+         if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+           // Respective byte enables are asserted as per write strobes, note the use of the index part select operator
+           // '+:', you will need to understand how this operator works.
+           slv_regs[axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB]][(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+         end
+    end else begin
+        fifo_wr_en <= 'b0;
     end
-  end else begin
-      fifo_wr_en <= 'b0;
-  end
+ end
 end    
 
 // Implement write response logic generation
@@ -345,6 +384,8 @@ begin
 end   
 
 
+
+
 // Implement axi_arready generation
 // axi_arready is asserted for one S_AXI_ACLK clock cycle when
 // S_AXI_ARVALID is asserted. axi_awready is 
@@ -352,28 +393,28 @@ end
 // The read address is also latched when S_AXI_ARVALID is 
 // asserted. axi_araddr is reset to zero on reset assertion.
 
-// always_ff @( posedge S_AXI_ACLK )
-// begin
-//   if ( S_AXI_ARESETN == 1'b0 )
-//     begin
-//       axi_arready <= 1'b0;
-//       axi_araddr  <= 32'b0;
-//     end 
-//   else
-//     begin    
-//       if (~axi_arready && S_AXI_ARVALID)
-//         begin
-//           // indicates that the slave has acceped the valid read address
-//           axi_arready <= 1'b1;
-//           // Read address latching
-//           axi_araddr  <= S_AXI_ARADDR;
-//         end
-//       else
-//         begin
-//           axi_arready <= 1'b0;
-//         end
-//     end 
-// end       
+ always_ff @( posedge S_AXI_ACLK )
+ begin
+   if ( S_AXI_ARESETN == 1'b0 )
+     begin
+       axi_arready <= 1'b0;
+       axi_araddr  <= 32'b0;
+     end 
+   else
+     begin    
+       if (~axi_arready && S_AXI_ARVALID)
+         begin
+           // indicates that the slave has acceped the valid read address
+           axi_arready <= 1'b1;
+           // Read address latching
+           axi_araddr  <= S_AXI_ARADDR;
+         end
+       else
+         begin
+           axi_arready <= 1'b0;
+         end
+     end 
+ end       
 
 // Implement axi_arvalid generation
 // axi_rvalid is asserted for one S_AXI_ACLK clock cycle when both 
@@ -383,14 +424,59 @@ end
 // bus and axi_rresp indicates the status of read transaction.axi_rvalid 
 // is deasserted on reset (active low). axi_rresp and axi_rdata are 
 // cleared to zero on reset (active low).  
-
+always_ff @( posedge S_AXI_ACLK )
+begin
+  if ( S_AXI_ARESETN == 1'b0 )
+    begin
+      axi_rvalid <= 0;
+      axi_rresp  <= 0;
+    end 
+  else
+    begin    
+      if (axi_arready && S_AXI_ARVALID && ~axi_rvalid)
+        begin
+          // Valid read data is available at the read data bus
+          axi_rvalid <= 1'b1;
+          axi_rresp  <= 2'b0; // 'OKAY' response
+        end   
+      else if (axi_rvalid && S_AXI_RREADY)
+        begin
+          // Read data is accepted by the master
+          axi_rvalid <= 1'b0;
+        end                
+    end
+end    
 
 
 // Implement memory mapped register select and read logic generation
 // Slave register read enable is asserted when valid address is available
 // and the slave is ready to accept the read address.
 // assign slv_reg_rden = axi_arready & S_AXI_ARVALID & ~axi_rvalid;////////////////////////////////////////////////3
+assign slv_reg_rden = axi_arready & S_AXI_ARVALID & ~axi_rvalid;
+always_comb
+begin
+      // Address decoding for reading registers
+     reg_data_out = slv_regs[axi_araddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB]];
+end
 
+// Output register or memory read data
+always_ff @( posedge S_AXI_ACLK )
+begin
+  if ( S_AXI_ARESETN == 1'b0 )
+    begin
+      axi_rdata  <= 0;
+    end 
+  else
+    begin    
+      // When there is a valid read address (S_AXI_ARVALID) with 
+      // acceptance of read address by the slave (axi_arready), 
+      // output the read dada 
+      if (slv_reg_rden)
+        begin
+          axi_rdata <= reg_data_out;     // register read data
+        end   
+    end
+end 
 
 // always_ff @(posedge S_AXI_ACLK) begin
 //   if (!S_AXI_ARESETN)
@@ -583,153 +669,168 @@ fifo_generator_0 fifo(
 );
 
 
-//// Used the C code on a separate compiler to generate this.
-//localparam int tri_count= 34;
-//localparam logic [191:0] scene [tri_count] = '{/*
-//    // --- Cornell Box Walls ---
-//    {32'd14302, 8'b0, 8'hB6, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177}, // Floor 1
-//    {32'd2810,  8'b0, 8'hB6, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd206, 7'b0, 9'd246}, // Floor 2
-//    {32'd14098, 8'b0, 8'h48, 16'd42, 8'b0, 8'd103, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd42, 8'b0, 8'd103, 7'b0, 9'd177}, // Ceiling 1
-//    {32'd2770,  8'b0, 8'h48, 16'd42, 8'b0, 8'd103, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Ceiling 2
-//    {32'd14098, 8'b0, 8'hA4, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73,  16'd42, 8'b0, 8'd103, 7'b0, 9'd143}, // Left Wall 1
-//    {32'd2770,  8'b0, 8'hA4, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd73},  // Left Wall 2
-//    {32'd2810,  8'b0, 8'h34, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177, 16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Right Wall 1
-//    {32'd14302, 8'b0, 8'h34, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd42, 8'b0, 8'd103, 7'b0, 9'd177}, // Right Wall 2
-//    {32'd1121,  8'b0, 8'h6D, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Back Wall 1
-//    {32'd1121,  8'b0, 8'h6D, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73},  // Back Wall 2
+// // Used the C code on a separate compiler to generate this.
+// localparam int tri_count= 30;
+// localparam logic [191:0] scene [tri_count] = '{/*
+//     // --- Cornell Box Walls ---
+//     {32'd14302, 8'b0, 8'hB6, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177}, // Floor 1
+//     {32'd2810,  8'b0, 8'hB6, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd206, 7'b0, 9'd246}, // Floor 2
+//     {32'd14098, 8'b0, 8'h48, 16'd42, 8'b0, 8'd103, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd42, 8'b0, 8'd103, 7'b0, 9'd177}, // Ceiling 1
+//     {32'd2770,  8'b0, 8'h48, 16'd42, 8'b0, 8'd103, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Ceiling 2
+//     {32'd14098, 8'b0, 8'hA4, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73,  16'd42, 8'b0, 8'd103, 7'b0, 9'd143}, // Left Wall 1
+//     {32'd2770,  8'b0, 8'hA4, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd73},  // Left Wall 2
+//     {32'd2810,  8'b0, 8'h34, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177, 16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Right Wall 1
+//     {32'd14302, 8'b0, 8'h34, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd42, 8'b0, 8'd103, 7'b0, 9'd177}, // Right Wall 2
+//     {32'd1121,  8'b0, 8'h6D, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Back Wall 1
+//     {32'd1121,  8'b0, 8'h6D, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73},  // Back Wall 2
 
-//    // --- Small Box (Blue Shaded) ---
-//    {32'd2261,  8'b0, 8'h01, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd172, 8'b0, 8'd250, 7'b0, 9'd133},
-//    {32'd3043,  8'b0, 8'h01, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd250, 7'b0, 9'd133, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81},
-//    {32'd18436, 8'b0, 8'h4B, 16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd129, 8'b0, 8'd224, 7'b0, 9'd125},
-//    {32'd24818, 8'b0, 8'h4B, 16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
-//    {32'd2577,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd125},
-//    {32'd2577,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd125, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125},
-//    {32'd12409, 8'b0, 8'h26, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd250, 7'b0, 9'd133, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
-//    {32'd12409, 8'b0, 8'h26, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd172, 8'b0, 8'd198, 7'b0, 9'd81},
-//    {32'd24818, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81},
-//    {32'd6938,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81,  16'd129, 8'b0, 8'd224, 7'b0, 9'd55},
-//    {32'd22550, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd129, 8'b0, 8'd224, 7'b0, 9'd125, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
-//    {32'd80659, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd172, 8'b0, 8'd250, 7'b0, 9'd133},
+//     // --- Small Box (Blue Shaded) ---
+//     {32'd2261,  8'b0, 8'h01, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd172, 8'b0, 8'd250, 7'b0, 9'd133},
+//     {32'd3043,  8'b0, 8'h01, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd250, 7'b0, 9'd133, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81},
+//     {32'd18436, 8'b0, 8'h4B, 16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd129, 8'b0, 8'd224, 7'b0, 9'd125},
+//     {32'd24818, 8'b0, 8'h4B, 16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
+//     {32'd2577,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd125},
+//     {32'd2577,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd125, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125},
+//     {32'd12409, 8'b0, 8'h26, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd250, 7'b0, 9'd133, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
+//     {32'd12409, 8'b0, 8'h26, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd172, 8'b0, 8'd198, 7'b0, 9'd81},
+//     {32'd24818, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81},
+//     {32'd6938,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81,  16'd129, 8'b0, 8'd224, 7'b0, 9'd55},
+//     {32'd22550, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd129, 8'b0, 8'd224, 7'b0, 9'd125, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
+//     {32'd80659, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd172, 8'b0, 8'd250, 7'b0, 9'd133},
 
-//    // --- Tall Box (Cyan Shaded) ---
-//    {32'd34735, 8'b0, 8'h08, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216},
-//    {32'd42048, 8'b0, 8'h08, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178},
-//    {32'd16777, 8'b0, 8'h36, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216}, 
-//    {32'd16777, 8'b0, 8'h36, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178},
-//    {32'd6288,  8'b0, 8'h0D, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229},
-//    {32'd6288,  8'b0, 8'h0D, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229},
-//    {32'd9294,  8'b0, 8'h0D, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216},
-//    {32'd9294,  8'b0, 8'h0D, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216},
-//    {32'd70640, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178},
-//    {32'd57852, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183},
-//    {32'd22250, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216},
-//    {32'd27169, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216}
-//*/
-//    // 1-4: All CW in original
-//     {32'd14302, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd250, 8'b0, 8'd137, 7'b0, 9'd177, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143}, 
-//     {32'd2810, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143}, 
-//     {32'd14098, 8'b0, 8'hFF, 16'd250, 8'b0, 8'd103, 7'b0, 9'd177, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd250, 8'b0, 8'd103, 7'b0, 9'd143}, 
-//     {32'd2770, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd250, 8'b0, 8'd103, 7'b0, 9'd143},
+//     // --- Tall Box (Cyan Shaded) ---
+//     {32'd34735, 8'b0, 8'h08, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216},
+//     {32'd42048, 8'b0, 8'h08, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178},
+//     {32'd16777, 8'b0, 8'h36, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216}, 
+//     {32'd16777, 8'b0, 8'h36, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178},
+//     {32'd6288,  8'b0, 8'h0D, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229},
+//     {32'd6288,  8'b0, 8'h0D, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229},
+//     {32'd9294,  8'b0, 8'h0D, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216},
+//     {32'd9294,  8'b0, 8'h0D, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216},
+//     {32'd70640, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178},
+//     {32'd57852, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183},
+//     {32'd22250, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216},
+//     {32'd27169, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216}
+// */
+//     // Cornell Box - Proper Z spacing (0=near, 255=far)
+// // Camera conceptually at z=-100 looking forward
+// // Box spans from z=50 (near) to z=200 (far)
+//     // Format: {inv_area, 8'b0, color, z3, 8'b0, v3y, 7'b0, v3x, z2, 8'b0, v2y, 7'b0, v2x, z1, 8'b0, v1y, 7'b0, v1x}
+    
+//     // Floor (white) - z=200 (far)
+//     {32'd16777216, 8'b0, 8'hFF, 16'd200, 8'b0, 8'd0, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0},
+//     {32'd16777216, 8'b0, 8'hFF, 16'd200, 8'b0, 8'd0, 7'b0, 9'd239, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd239},
+    
+//     // Ceiling (white) - z=200 (far)
+//     {32'd16777216, 8'b0, 8'hDB, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd239, 7'b0, 9'd0, 16'd200, 8'b0, 8'd239, 7'b0, 9'd0},
+//     {32'd16777216, 8'b0, 8'hDB, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd239, 7'b0, 9'd0},
+    
+//     // Left wall (red) - z=200 (far)
+//     {32'd16777216, 8'b0, 8'hE0, 16'd200, 8'b0, 8'd239, 7'b0, 9'd0, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0},
+//     {32'd16777216, 8'b0, 8'hE0, 16'd200, 8'b0, 8'd239, 7'b0, 9'd0, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd239},
+    
+//     // Right wall (green) - z=200 (far)
+//     {32'd16777216, 8'b0, 8'h1C, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd239},
+//     {32'd16777216, 8'b0, 8'h1C, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239},
+    
+//     // Back wall (white) - z=200 (far)
+//     {32'd16777216, 8'b0, 8'hB6, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd239, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0},
+//     {32'd16777216, 8'b0, 8'hB6, 16'd200, 8'b0, 8'd239, 7'b0, 9'd239, 16'd200, 8'b0, 8'd239, 7'b0, 9'd0, 16'd200, 8'b0, 8'd0, 7'b0, 9'd0},
+    
+//     // Small cube - Front face (white) - z=90-110 (mid-near)
+//     {32'd65536, 8'b0, 8'hFF, 16'd90, 8'b0, 8'd155, 7'b0, 9'd103, 16'd90, 8'b0, 8'd155, 7'b0, 9'd48, 16'd90, 8'b0, 8'd201, 7'b0, 9'd48},
+//     {32'd65536, 8'b0, 8'hFF, 16'd90, 8'b0, 8'd155, 7'b0, 9'd103, 16'd90, 8'b0, 8'd201, 7'b0, 9'd103, 16'd90, 8'b0, 8'd201, 7'b0, 9'd48},
+    
+//     // Small cube - Top face (white) - z=90-110
+//     {32'd65536, 8'b0, 8'hDB, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd110, 8'b0, 8'd155, 7'b0, 9'd48, 16'd110, 8'b0, 8'd155, 7'b0, 9'd48},
+//     {32'd65536, 8'b0, 8'hDB, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd110, 8'b0, 8'd155, 7'b0, 9'd48},
+    
+//     // Small cube - Left face (white) - z=90-110
+//     {32'd65536, 8'b0, 8'hB6, 16'd110, 8'b0, 8'd155, 7'b0, 9'd48, 16'd90, 8'b0, 8'd155, 7'b0, 9'd48, 16'd90, 8'b0, 8'd201, 7'b0, 9'd48},
+//     {32'd65536, 8'b0, 8'hB6, 16'd110, 8'b0, 8'd155, 7'b0, 9'd48, 16'd90, 8'b0, 8'd201, 7'b0, 9'd48, 16'd110, 8'b0, 8'd201, 7'b0, 9'd48},
+    
+//     // Small cube - Right face (white) - z=90-110
+//     {32'd65536, 8'b0, 8'h6D, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd90, 8'b0, 8'd201, 7'b0, 9'd103, 16'd90, 8'b0, 8'd155, 7'b0, 9'd103},
+//     {32'd65536, 8'b0, 8'h6D, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd110, 8'b0, 8'd201, 7'b0, 9'd103, 16'd90, 8'b0, 8'd201, 7'b0, 9'd103},
+    
+//     // Small cube - Back face (white) - z=110
+//     {32'd65536, 8'b0, 8'h92, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd110, 8'b0, 8'd201, 7'b0, 9'd103, 16'd110, 8'b0, 8'd201, 7'b0, 9'd48},
+//     {32'd65536, 8'b0, 8'h92, 16'd110, 8'b0, 8'd155, 7'b0, 9'd103, 16'd110, 8'b0, 8'd201, 7'b0, 9'd48, 16'd110, 8'b0, 8'd155, 7'b0, 9'd48},
+    
+//     // Tall cube - Front face (white) - z=50-70 (nearest)
+//     {32'd131072, 8'b0, 8'hDB, 16'd50, 8'b0, 8'd119, 7'b0, 9'd191, 16'd50, 8'b0, 8'd119, 7'b0, 9'd143, 16'd50, 8'b0, 8'd239, 7'b0, 9'd143},
+//     {32'd131072, 8'b0, 8'hDB, 16'd50, 8'b0, 8'd119, 7'b0, 9'd191, 16'd50, 8'b0, 8'd239, 7'b0, 9'd191, 16'd50, 8'b0, 8'd239, 7'b0, 9'd143},
+    
+//     // Tall cube - Top face (white) - z=50-70
+//     {32'd131072, 8'b0, 8'hFF, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd70, 8'b0, 8'd119, 7'b0, 9'd143, 16'd70, 8'b0, 8'd119, 7'b0, 9'd143},
+//     {32'd131072, 8'b0, 8'hFF, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd70, 8'b0, 8'd119, 7'b0, 9'd143},
+    
+//     // Tall cube - Left face (white) - z=50-70
+//     {32'd131072, 8'b0, 8'hB6, 16'd70, 8'b0, 8'd119, 7'b0, 9'd143, 16'd50, 8'b0, 8'd119, 7'b0, 9'd143, 16'd50, 8'b0, 8'd239, 7'b0, 9'd143},
+//     {32'd131072, 8'b0, 8'hB6, 16'd70, 8'b0, 8'd119, 7'b0, 9'd143, 16'd50, 8'b0, 8'd239, 7'b0, 9'd143, 16'd70, 8'b0, 8'd239, 7'b0, 9'd143},
+    
+//     // Tall cube - Right face (white) - z=50-70
+//     {32'd131072, 8'b0, 8'h49, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd50, 8'b0, 8'd239, 7'b0, 9'd191, 16'd50, 8'b0, 8'd119, 7'b0, 9'd191},
+//     {32'd131072, 8'b0, 8'h49, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd70, 8'b0, 8'd239, 7'b0, 9'd191, 16'd50, 8'b0, 8'd239, 7'b0, 9'd191},
+    
+//     // Tall cube - Back face (white) - z=70
+//     {32'd131072, 8'b0, 8'h6D, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd70, 8'b0, 8'd239, 7'b0, 9'd191, 16'd70, 8'b0, 8'd239, 7'b0, 9'd143},
+//     {32'd131072, 8'b0, 8'h6D, 16'd70, 8'b0, 8'd119, 7'b0, 9'd191, 16'd70, 8'b0, 8'd239, 7'b0, 9'd143, 16'd70, 8'b0, 8'd119, 7'b0, 9'd143}
+// };
 
-//     // 5-8: All CW in original
-//     {32'd2770, 8'b0, 8'hE0, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143}, 
-//     {32'd14098, 8'b0, 8'hE0, 16'd250, 8'b0, 8'd103, 7'b0, 9'd143, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143},
-//     {32'd14302, 8'b0, 8'h1C, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd250, 8'b0, 8'd103, 7'b0, 9'd177, 16'd250, 8'b0, 8'd137, 7'b0, 9'd177}, 
-//     {32'd2810, 8'b0, 8'h1C, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd250, 8'b0, 8'd137, 7'b0, 9'd177}, 
-
-//     // 9-10: Flipped (CCW -> CW)
-//     {32'd1121, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73}, 
-//     {32'd1121, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73}, 
-
-//     // 11-14: All CW in original
-//     {32'd2261, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
-//     {32'd3043, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55},
-//     {32'd18436, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55}, 
-//     {32'd24818, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55},
-
-//     // 15-19: Flipped (CCW -> CW)
-//     {32'd2577, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
-//     {32'd2577, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55},
-//     {32'd12409, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81}, 
-//     {32'd12409, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81}, 
-//     {32'd24818, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
-
-//     // 20-22: 21 Flipped, others CW
-//     {32'd6938, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
-//     {32'd22550, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125}, 
-//     {32'd80659, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125}, 
-
-//     // 23-24: Flipped (CCW -> CW)
-//     {32'd34735, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229, 16'd254, 8'b0, 8'd214, 7'b0, 9'd216, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
-//     {32'd42048, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd214, 7'b0, 9'd216, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
-
-//     // 25-26: Degenerate (Area = 0). Will not render.
-//     {32'd0, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183}, 
-//     {32'd0, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183}, 
-
-//     // 27-28: CW in original
-//     {32'd6288, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
-//     {32'd6288, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd229, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
-
-//     // 29-30: Flipped (CCW -> CW)
-//     {32'd9294, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd178, 7'b0, 9'd178, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178}, 
-//     {32'd9294, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178}, 
-
-//     // 31-32: CW in original
-//     {32'd70640, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
-//     {32'd57852, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
-
-//     // 33-34: Flipped (CCW -> CW)
-//     {32'd22250, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd229, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229}, 
-//     {32'd27169, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd229, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229}
-//};
 
 
-//typedef enum logic [1:0] {
-//    idle,
-//    wait_buffer,
-//    wait_fifo,
-//    push
-//} inject_state_t;
+// typedef enum logic [1:0] {
+//     idle,
+//     wait_buffer,
+//     wait_fifo,
+//     push
+// } inject_state_t;
 
-//inject_state_t inject_state;
+// inject_state_t inject_state;
 
-//logic [191:0] current_tri;
-//int tri_index = 0;
+// logic [191:0] current_tri;
+// int tri_index = 0;
 
-//assign current_tri = scene[tri_index];
+// assign current_tri = scene[tri_index];
 
-//always_ff @(posedge S_AXI_ACLK) begin
-//    if(prev_front != front) tri_index <= 0;
-//    if (~S_AXI_ARESETN) begin
-//        inject_state <= idle;
-//        fifo_wr_en <= 1'b0;
-//        tri_index <= 0;
-//    end else begin
-//        case (inject_state)
-//            idle: begin
-//                fifo_wr_en <= 1'b0;
-//                // Wait for vsync rising edge
-//                if (~fifo_full && tri_index != tri_count-1) begin
-//                    inject_state <= wait_buffer;
-//                end
-//            end
-//            wait_buffer: begin
-//                if(~fifo_full) begin
-//                    inject_state <= push;
-//                end
-//            end
-//            push: begin
-//                fifo_din <= current_tri;
-//                fifo_wr_en <= 1'b1;
-//                inject_state <= idle;
-//                tri_index++;
-//            end
-//            default: fifo_wr_en <= 1'b0;
-//        endcase
-//    end
-//end
+// always_ff @(posedge S_AXI_ACLK) begin
+//     if(prev_front != front) begin
+//         inject_state <= idle;
+//         tri_index = 0;
+//     end
+//     if (~S_AXI_ARESETN) begin
+//         inject_state <= idle;
+//         fifo_wr_en <= 1'b0;
+//         tri_index = 0;
+//     end else begin
+//         case (inject_state)
+//             idle: begin
+//                 fifo_wr_en <= 1'b0;
+//                 // Wait for vsync rising edge
+//                 if (~fifo_full && tri_index < tri_count) begin
+//                     inject_state <= wait_buffer;
+//                 end
+//             end
+//             wait_buffer: begin
+//                 if(~fifo_full) begin
+//                     inject_state <= push;
+//                 end
+//             end
+//             push: begin
+//                 fifo_din <= current_tri;
+//                 fifo_wr_en <= 1'b1;
+//                 inject_state <= idle;
+//                 tri_index++;
+//             end
+//             default: begin
+//                 inject_state <= idle;
+//                 fifo_wr_en <= 1'b0;
+//                 tri_index = 0;
+//             end
+//         endcase
+//     end
+// end
 
 //Signals for 1 triangle:
 logic [8:0] v1x, v2x, v3x;
@@ -852,26 +953,27 @@ always_ff @(posedge S_AXI_ACLK) begin
     end else begin
       case(controller_state) 
         clear_buf: begin
-//          if(~buffers_cleared) begin
-//            // Clear both buffers
-//            zbuf_we_buf_clear <= 1;
-//            zbuf_addr_buf_clear <= clear_addr;
-//            zbuf_din_buf_clear <= 8'hFF;
+          triangle_ready <= 0;
+          if(~buffers_cleared) begin
+            // Clear both buffers
+            zbuf_we_buf_clear <= 1;
+            zbuf_addr_buf_clear <= clear_addr;
+            zbuf_din_buf_clear <= 8'hFF;
             
-//            wea_clear_buf <= 1;
-//            addra_clear_buf <= clear_addr;
-//            dina_clear_buf <= 8'h00;
+            wea_clear_buf <= 1;
+            addra_clear_buf <= clear_addr;
+            dina_clear_buf <= 8'h00;
 
-//            clear_addr <= clear_addr + 1;
+            clear_addr <= clear_addr + 1;
 
-//            if(clear_addr == 76799) begin
-//              buffers_cleared <= 1;
-//              zbuf_we_buf_clear <= 0;
-//              wea_clear_buf <= 0;
+            if(clear_addr == 76799) begin
+              buffers_cleared <= 1;
+              zbuf_we_buf_clear <= 0;
+              wea_clear_buf <= 0;
               triangle_ready <= 1;
               controller_state <= wait_tri;
-//            end
-//          end
+            end
+          end
         end
         wait_tri: begin
           if(triangle_ready && triangle_valid) begin

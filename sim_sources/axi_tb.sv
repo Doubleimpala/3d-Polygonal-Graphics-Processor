@@ -22,7 +22,18 @@ module tb_axi_triangle_pipeline();
     logic [1:0] write_resp;
     logic write_resp_valid;
     logic write_resp_ready = 1'b0;
+    
+    logic [4:0] axi_araddr = 14'd0;
+    logic [2:0] axi_arprot = 3'd0;
+    logic axi_arvalid = 1'b0;
+    logic axi_arready;
+    logic [31:0] axi_rdata;
+    logic [1:0] axi_rresp;
+    logic axi_rvalid;
+    logic axi_rready = 1'b0;
 
+    logic [2:0] axi_awprot = 3'd0;
+    logic [3:0] axi_wstrb = 4'b1111;
     // =========================================================================
     // HDMI outputs
     // =========================================================================
@@ -34,7 +45,7 @@ module tb_axi_triangle_pipeline();
     // =========================================================================
     hdmi_text_controller_v1_0 #(
         .C_AXI_DATA_WIDTH(32),
-        .C_AXI_ADDR_WIDTH(14)
+        .C_AXI_ADDR_WIDTH(5)
     ) dut (
         .hdmi_clk_n(hdmi_clk_n),
         .hdmi_clk_p(hdmi_clk_p),
@@ -50,7 +61,17 @@ module tb_axi_triangle_pipeline();
         .axi_wready(write_data_ready),
         .axi_bresp(write_resp),
         .axi_bvalid(write_resp_valid),
-        .axi_bready(write_resp_ready)
+        .axi_bready(write_resp_ready),
+        .axi_araddr(axi_araddr),
+        .axi_arprot(axi_arprot),
+        .axi_arvalid(axi_arvalid),
+        .axi_arready(axi_arready),
+        .axi_rdata(axi_rdata),
+        .axi_rresp(axi_rresp),
+        .axi_rvalid(axi_rvalid),
+        .axi_rready(axi_rready),
+        .axi_awprot(axi_awprot),
+        .axi_wstrb(axi_wstrb)
     );
 
     // =========================================================================
@@ -125,6 +146,7 @@ module tb_axi_triangle_pipeline();
     endtask
     // Provided AXI write task, follow this example for AXI read below
     task axi_write (input logic [31:0] addr, input logic [31:0] data);
+        $display("Writing %x to address %x", data, addr);
         begin
             #3 write_addr <= addr;	//Put write address on bus
             write_data <= data;	//put write data on bus
@@ -343,13 +365,13 @@ module tb_axi_triangle_pipeline();
         wait(pixel_vs == 1'b1);
         $display("Vsync high - frame displaying");
         wait(pixel_vs == 1'b0);
-        $display("Second vsync falling edge - frame complete");
-        wait(pixel_vs == 1'b0);
-        $display("First vsync falling edge detected (buffer swap)");
-        wait(pixel_vs == 1'b1);
-        $display("Vsync high - frame displaying");
-        wait(pixel_vs == 1'b0);
-        $display("Second vsync falling edge - frame complete");
+//        $display("Second vsync falling edge - frame complete");
+//        wait(pixel_vs == 1'b0);
+//        $display("First vsync falling edge detected (buffer swap)");
+//        wait(pixel_vs == 1'b1);
+//        $display("Vsync high - frame displaying");
+//        wait(pixel_vs == 1'b0);
+//        $display("Second vsync falling edge - frame complete");
 
         // Let the frame fully render
         repeat(1000) @(posedge pixel_clk);

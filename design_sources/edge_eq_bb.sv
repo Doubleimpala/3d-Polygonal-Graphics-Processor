@@ -67,7 +67,7 @@ assign bbyf = (temp4 > v3y) ? temp4 : v3y;
 //Edge equation calculations.
 //Edge(x,y) = A*x + B*y + C
 //A = y1-y2 = delta y.
-//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Ask the stack overflow I guess ¯\_(ツ)_/¯
+//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Ask the stack overflow I guess.
 //C = x1*y2 - x2*y1
 //So if Edge(x,y) >= 0 then the pixel is inside. If all 3 edges are >= 0, then we should draw the pixel.
 
