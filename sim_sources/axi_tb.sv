@@ -344,6 +344,12 @@ module tb_axi_triangle_pipeline();
         $display("Vsync high - frame displaying");
         wait(pixel_vs == 1'b0);
         $display("Second vsync falling edge - frame complete");
+        wait(pixel_vs == 1'b0);
+        $display("First vsync falling edge detected (buffer swap)");
+        wait(pixel_vs == 1'b1);
+        $display("Vsync high - frame displaying");
+        wait(pixel_vs == 1'b0);
+        $display("Second vsync falling edge - frame complete");
 
         // Let the frame fully render
         repeat(1000) @(posedge pixel_clk);

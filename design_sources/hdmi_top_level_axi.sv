@@ -34,7 +34,7 @@ module hdmi_text_controller_v1_0_AXI #
     // Width of S_AXI data bus
     parameter integer C_S_AXI_DATA_WIDTH	= 32,
     // Width of S_AXI address bus
-    parameter integer C_S_AXI_ADDR_WIDTH	= 5
+    parameter integer C_S_AXI_ADDR_WIDTH	= 16
 )
 (
     // Users to add ports here
@@ -134,6 +134,14 @@ logic fifo_srst;
 logic triangle_ready;
 logic triangle_valid;
 
+logic prev_vsync_sync;
+logic vsync_sync1;
+logic vsync_sync2;
+
+always_ff @(posedge S_AXI_ACLK) begin
+    vsync_sync1 <= vsync;
+    vsync_sync2 <= vsync_sync1;
+end
 
 
 
@@ -277,9 +285,9 @@ end
 // These registers are cleared when reset (active low) is applied.
 // Slave register write enable is asserted when valid address and data are available
 // and the slave is ready to accept the write address and write data.
-logic [31:0] buffer [5:0];
+logic [31:0] buffer [5];
 logic buffer_wr_en;
-assign buffer_wr_en = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID;
+assign buffer_wr_en = axi_wready && S_AXI_WVALID && axi_awready && S_AXI_AWVALID && ~axi_bvalid;
 always_ff @( posedge S_AXI_ACLK ) begin
   if ( S_AXI_ARESETN == 1'b0) begin
         fifo_wr_en <= 1'b0;
@@ -484,6 +492,8 @@ end
 //Buffer signals for the VGA side
 logic [7:0] doutb;
 logic [16:0] addrb;
+logic prev_front;
+logic front;
 
 framebuffer fb(
   .clk(S_AXI_ACLK),
@@ -508,7 +518,7 @@ logic [7:0] zbuf_dout_raster;
 logic [16:0] zbuf_addr_raster;
 logic [7:0] zbuf_din_raster;
 logic zbuf_we_raster;
-logic zbuf_en_raster;
+
 assign zbuf_dout_raster = zbuf_dout;
 
 //Zbuffer signals from buffer clear.
@@ -573,6 +583,154 @@ fifo_generator_0 fifo(
 );
 
 
+//// Used the C code on a separate compiler to generate this.
+//localparam int tri_count= 34;
+//localparam logic [191:0] scene [tri_count] = '{/*
+//    // --- Cornell Box Walls ---
+//    {32'd14302, 8'b0, 8'hB6, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177}, // Floor 1
+//    {32'd2810,  8'b0, 8'hB6, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd206, 7'b0, 9'd246}, // Floor 2
+//    {32'd14098, 8'b0, 8'h48, 16'd42, 8'b0, 8'd103, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd42, 8'b0, 8'd103, 7'b0, 9'd177}, // Ceiling 1
+//    {32'd2770,  8'b0, 8'h48, 16'd42, 8'b0, 8'd103, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Ceiling 2
+//    {32'd14098, 8'b0, 8'hA4, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73,  16'd42, 8'b0, 8'd103, 7'b0, 9'd143}, // Left Wall 1
+//    {32'd2770,  8'b0, 8'hA4, 16'd42, 8'b0, 8'd137, 7'b0, 9'd143, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd73},  // Left Wall 2
+//    {32'd2810,  8'b0, 8'h34, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177, 16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Right Wall 1
+//    {32'd14302, 8'b0, 8'h34, 16'd42, 8'b0, 8'd137, 7'b0, 9'd177, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd42, 8'b0, 8'd103, 7'b0, 9'd177}, // Right Wall 2
+//    {32'd1121,  8'b0, 8'h6D, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd206, 7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd246}, // Back Wall 1
+//    {32'd1121,  8'b0, 8'h6D, 16'd259, 8'b0, 8'd206, 7'b0, 9'd73,  16'd259, 8'b0, 8'd33,  7'b0, 9'd246, 16'd259, 8'b0, 8'd33,  7'b0, 9'd73},  // Back Wall 2
+
+//    // --- Small Box (Blue Shaded) ---
+//    {32'd2261,  8'b0, 8'h01, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd172, 8'b0, 8'd250, 7'b0, 9'd133},
+//    {32'd3043,  8'b0, 8'h01, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd250, 7'b0, 9'd133, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81},
+//    {32'd18436, 8'b0, 8'h4B, 16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd129, 8'b0, 8'd224, 7'b0, 9'd125},
+//    {32'd24818, 8'b0, 8'h4B, 16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
+//    {32'd2577,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd125},
+//    {32'd2577,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd129, 8'b0, 8'd224, 7'b0, 9'd125, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125},
+//    {32'd12409, 8'b0, 8'h26, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd250, 7'b0, 9'd133, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
+//    {32'd12409, 8'b0, 8'h26, 16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd172, 8'b0, 8'd198, 7'b0, 9'd81},
+//    {32'd24818, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd250, 7'b0, 9'd81,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81},
+//    {32'd6938,  8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd55,  16'd172, 8'b0, 8'd198, 7'b0, 9'd81,  16'd129, 8'b0, 8'd224, 7'b0, 9'd55},
+//    {32'd22550, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd129, 8'b0, 8'd224, 7'b0, 9'd125, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133},
+//    {32'd80659, 8'b0, 8'h26, 16'd129, 8'b0, 8'd38,  7'b0, 9'd125, 16'd172, 8'b0, 8'd198, 7'b0, 9'd133, 16'd172, 8'b0, 8'd250, 7'b0, 9'd133},
+
+//    // --- Tall Box (Cyan Shaded) ---
+//    {32'd34735, 8'b0, 8'h08, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216},
+//    {32'd42048, 8'b0, 8'h08, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178},
+//    {32'd16777, 8'b0, 8'h36, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216}, 
+//    {32'd16777, 8'b0, 8'h36, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178},
+//    {32'd6288,  8'b0, 8'h0D, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229},
+//    {32'd6288,  8'b0, 8'h0D, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229},
+//    {32'd9294,  8'b0, 8'h0D, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216},
+//    {32'd9294,  8'b0, 8'h0D, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216},
+//    {32'd70640, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd214, 7'b0, 9'd178, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178},
+//    {32'd57852, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd183, 16'd238, 8'b0, 8'd119, 7'b0, 9'd178, 16'd194, 8'b0, 8'd119, 7'b0, 9'd183},
+//    {32'd22250, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd194, 8'b0, 8'd119, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216},
+//    {32'd27169, 8'b0, 8'h31, 16'd194, 8'b0, 8'd235, 7'b0, 9'd229, 16'd238, 8'b0, 8'd119, 7'b0, 9'd216, 16'd238, 8'b0, 8'd214, 7'b0, 9'd216}
+//*/
+//    // 1-4: All CW in original
+//     {32'd14302, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd250, 8'b0, 8'd137, 7'b0, 9'd177, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143}, 
+//     {32'd2810, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143}, 
+//     {32'd14098, 8'b0, 8'hFF, 16'd250, 8'b0, 8'd103, 7'b0, 9'd177, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd250, 8'b0, 8'd103, 7'b0, 9'd143}, 
+//     {32'd2770, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd250, 8'b0, 8'd103, 7'b0, 9'd143},
+
+//     // 5-8: All CW in original
+//     {32'd2770, 8'b0, 8'hE0, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143}, 
+//     {32'd14098, 8'b0, 8'hE0, 16'd250, 8'b0, 8'd103, 7'b0, 9'd143, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd250, 8'b0, 8'd137, 7'b0, 9'd143},
+//     {32'd14302, 8'b0, 8'h1C, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd250, 8'b0, 8'd103, 7'b0, 9'd177, 16'd250, 8'b0, 8'd137, 7'b0, 9'd177}, 
+//     {32'd2810, 8'b0, 8'h1C, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd250, 8'b0, 8'd137, 7'b0, 9'd177}, 
+
+//     // 9-10: Flipped (CCW -> CW)
+//     {32'd1121, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd206, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73}, 
+//     {32'd1121, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd33, 7'b0, 9'd246, 16'd254, 8'b0, 8'd33, 7'b0, 9'd73, 16'd254, 8'b0, 8'd206, 7'b0, 9'd73}, 
+
+//     // 11-14: All CW in original
+//     {32'd2261, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
+//     {32'd3043, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55},
+//     {32'd18436, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55}, 
+//     {32'd24818, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55},
+
+//     // 15-19: Flipped (CCW -> CW)
+//     {32'd2577, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
+//     {32'd2577, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55},
+//     {32'd12409, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81}, 
+//     {32'd12409, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81}, 
+//     {32'd24818, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd81, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
+
+//     // 20-22: 21 Flipped, others CW
+//     {32'd6938, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd55, 16'd254, 8'b0, 8'd198, 7'b0, 9'd81, 16'd254, 8'b0, 8'd38, 7'b0, 9'd55}, 
+//     {32'd22550, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd224, 7'b0, 9'd125, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125}, 
+//     {32'd80659, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd250, 7'b0, 9'd133, 16'd254, 8'b0, 8'd198, 7'b0, 9'd133, 16'd254, 8'b0, 8'd38, 7'b0, 9'd125}, 
+
+//     // 23-24: Flipped (CCW -> CW)
+//     {32'd34735, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229, 16'd254, 8'b0, 8'd214, 7'b0, 9'd216, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
+//     {32'd42048, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd214, 7'b0, 9'd216, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
+
+//     // 25-26: Degenerate (Area = 0). Will not render.
+//     {32'd0, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183}, 
+//     {32'd0, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183}, 
+
+//     // 27-28: CW in original
+//     {32'd6288, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
+//     {32'd6288, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd229, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
+
+//     // 29-30: Flipped (CCW -> CW)
+//     {32'd9294, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd178, 7'b0, 9'd178, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178}, 
+//     {32'd9294, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178}, 
+
+//     // 31-32: CW in original
+//     {32'd70640, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd214, 7'b0, 9'd178, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
+//     {32'd57852, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd119, 7'b0, 9'd183, 16'd254, 8'b0, 8'd119, 7'b0, 9'd178, 16'd254, 8'b0, 8'd235, 7'b0, 9'd183}, 
+
+//     // 33-34: Flipped (CCW -> CW)
+//     {32'd22250, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd229, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229}, 
+//     {32'd27169, 8'b0, 8'hFF, 16'd254, 8'b0, 8'd229, 7'b0, 9'd229, 16'd254, 8'b0, 8'd119, 7'b0, 9'd216, 16'd254, 8'b0, 8'd235, 7'b0, 9'd229}
+//};
+
+
+//typedef enum logic [1:0] {
+//    idle,
+//    wait_buffer,
+//    wait_fifo,
+//    push
+//} inject_state_t;
+
+//inject_state_t inject_state;
+
+//logic [191:0] current_tri;
+//int tri_index = 0;
+
+//assign current_tri = scene[tri_index];
+
+//always_ff @(posedge S_AXI_ACLK) begin
+//    if(prev_front != front) tri_index <= 0;
+//    if (~S_AXI_ARESETN) begin
+//        inject_state <= idle;
+//        fifo_wr_en <= 1'b0;
+//        tri_index <= 0;
+//    end else begin
+//        case (inject_state)
+//            idle: begin
+//                fifo_wr_en <= 1'b0;
+//                // Wait for vsync rising edge
+//                if (~fifo_full && tri_index != tri_count-1) begin
+//                    inject_state <= wait_buffer;
+//                end
+//            end
+//            wait_buffer: begin
+//                if(~fifo_full) begin
+//                    inject_state <= push;
+//                end
+//            end
+//            push: begin
+//                fifo_din <= current_tri;
+//                fifo_wr_en <= 1'b1;
+//                inject_state <= idle;
+//                tri_index++;
+//            end
+//            default: fifo_wr_en <= 1'b0;
+//        endcase
+//    end
+//end
+
 //Signals for 1 triangle:
 logic [8:0] v1x, v2x, v3x;
 logic [7:0] v1y, v2y, v3y;
@@ -580,10 +738,10 @@ logic [7:0] color;
 logic [31:0] inv_area;
 logic [15:0] z1, z2, z3;
 
-// logic triangle_ready_prev;
-// always_ff @(posedge S_AXI_ACLK) begin
-//     triangle_ready_prev <= triangle_ready;
-// end
+//logic triangle_ready_prev;
+//always_ff @(posedge S_AXI_ACLK) begin
+//    triangle_ready_prev <= triangle_ready;
+//end
 
 // use triangle_ready and triangle_valid signals
 always_ff @(posedge S_AXI_ACLK) begin
@@ -655,7 +813,6 @@ rasterizer raster(
   .zbuf_addr(zbuf_addr_raster),
   .zbuf_din(zbuf_din_raster),
   .zbuf_we(zbuf_we_raster),
-  .zbuf_en(zbuf_en_raster),
   .*
 );
 ////////////////////END RASTERIZER STAGE
@@ -665,21 +822,15 @@ rasterizer raster(
 logic buffers_cleared;
 logic [16:0] clear_addr;
 
-logic prev_vsync_sync;
-logic vsync_sync1;
-logic vsync_sync2;
-
-always_ff @(posedge S_AXI_ACLK) begin
-    vsync_sync1 <= vsync;
-    vsync_sync2 <= vsync_sync1;
-end
 
 //Used to prevent clock domain crossing since the memory runs at 100 MHz and vsync is at 25 MHz, causes front to trigger multiple times.
 always_ff @(posedge S_AXI_ACLK) begin
     if (~S_AXI_ARESETN) begin
+        prev_front <= 0;
         prev_vsync_sync <= 1'b0;
     end 
     else begin
+      prev_front <= front;
       prev_vsync_sync <= vsync_sync2;
     end
 end
@@ -694,33 +845,33 @@ always_ff @(posedge S_AXI_ACLK) begin
     buffers_cleared <= 0;
     clear_addr <= 0;
   end else begin
-    if(~prev_vsync_sync && vsync_sync2 && controller_state == wait_tri) begin
+    if(front != prev_front && controller_state == wait_tri) begin
       controller_state <= clear_buf;
       buffers_cleared <= 0;
       clear_addr <= 0;
     end else begin
       case(controller_state) 
         clear_buf: begin
-          if(~buffers_cleared) begin
-            // Clear both buffers
-            zbuf_we_buf_clear <= 1;
-            zbuf_addr_buf_clear <= clear_addr;
-            zbuf_din_buf_clear <= 8'hFF;
+//          if(~buffers_cleared) begin
+//            // Clear both buffers
+//            zbuf_we_buf_clear <= 1;
+//            zbuf_addr_buf_clear <= clear_addr;
+//            zbuf_din_buf_clear <= 8'hFF;
             
-            wea_clear_buf <= 1;
-            addra_clear_buf <= clear_addr;
-            dina_clear_buf <= 8'h00;
+//            wea_clear_buf <= 1;
+//            addra_clear_buf <= clear_addr;
+//            dina_clear_buf <= 8'h00;
 
-            clear_addr <= clear_addr + 1;
+//            clear_addr <= clear_addr + 1;
 
-            if(clear_addr == 76799) begin
-              buffers_cleared <= 1;
-              zbuf_we_buf_clear <= 0;
-              wea_clear_buf <= 0;
+//            if(clear_addr == 76799) begin
+//              buffers_cleared <= 1;
+//              zbuf_we_buf_clear <= 0;
+//              wea_clear_buf <= 0;
               triangle_ready <= 1;
               controller_state <= wait_tri;
-            end
-          end
+//            end
+//          end
         end
         wait_tri: begin
           if(triangle_ready && triangle_valid) begin
@@ -742,6 +893,11 @@ always_ff @(posedge S_AXI_ACLK) begin
             controller_state <= wait_tri;
             triangle_ready <= 1;
           end
+        end
+        default: begin
+            controller_state <= clear_buf;
+            buffers_cleared <= 0;
+            clear_addr <= 0;
         end
       endcase
     end

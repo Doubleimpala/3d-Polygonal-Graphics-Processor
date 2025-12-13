@@ -12,10 +12,11 @@ module framebuffer#(
 
     //VGA side
     input logic [ADDR_WIDTH-1:0] addrb,
-    output logic [7:0] doutb
+    output logic [7:0] doutb,
+    output logic front
 );
 
-logic front;
+//logic front;
 logic prev_vsync_sync;
 logic vsync_sync1;
 logic vsync_sync2;

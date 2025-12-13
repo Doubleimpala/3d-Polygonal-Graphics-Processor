@@ -44,13 +44,12 @@ int main()
 
     xil_printf("Entering main\r\n");
 
+//    xil_DCacheDisable();
+
     float cam_x = 127.5f, cam_y = 127.5f, cam_z = -50.0f;
     float yaw = 0; // in radians
 
     while(1) {
-    	float a = 1.0f;
-    	float b = 1.0f;
-    	float c = cos_lookup(a);
 		// TODO: Keyboard or fpga button control for camera movement
 		// TODO: Consider 16-bit fixed point format
 
@@ -92,7 +91,7 @@ int main()
 		matmul4x4(proj_mat, view_mat, proj_view_mat);
 		// TODO: Look into culling (frustram, backface, occlusion, etc.)
 		for (int8_t i = 0; i < cornell_box_triangle_count; i++) {
-		  DATA data;
+//		  DATA data;
 
 		  //if (!*vsync)
 		  //  break;
@@ -163,7 +162,7 @@ int main()
 		  if (vec1[3] <= 0.0001f || vec2[3] <= 0.0001f || vec3[3] <= 0.0001f)
 			continue;
 
-		  data.color = cornell_box[i][9];
+		  data->color = cornell_box[i][9];
 		  float *vecs[3] = {vec1, vec2, vec3};
 		  for (int i = 0; i < 3; i++) {
 			// Perspective divide
@@ -172,38 +171,76 @@ int main()
 			vecs[i][2] /= vecs[i][3];
 
 
-			data.vertices[3 * i] = (uint16_t) ((vecs[i][0] + 1.0f) * 160.0f);
-			data.vertices[3 * i + 1] = (uint16_t) ((1.0f - vecs[i][1]) * 120.0f);
-			data.vertices[3 * i + 2] = (uint16_t) (vecs[i][2] * 255.0f);
+			data->vertices[3 * i] = (uint16_t) ((vecs[i][0] + 1.0f) * 160.0f);
+			data->vertices[3 * i + 1] = (uint16_t) ((1.0f - vecs[i][1]) * 120.0f);
+			data->vertices[3 * i + 2] = (uint16_t) (vecs[i][2] * 255.0f);
 
-//			xil_printf("V%d x: %u\r\n", i, data.vertices[3 * i]);
-//			xil_printf("V%d y: %u\r\n", i, data.vertices[3 * i + 1]);
-//			xil_printf("V%d z: %u\r\n", i, data.vertices[3 * i + 2]);
+//			xil_printf("V%d x: %u\r\n", i, data->vertices[3 * i]);
+//			xil_printf("V%d y: %u\r\n", i, data->vertices[3 * i + 1]);
+//			xil_printf("V%d z: %u\r\n", i, data->vertices[3 * i + 2]);
 		  }
 
-		  uint32_t x1 = data.vertices[0];
-		  uint32_t y1 = data.vertices[1];
-		  uint32_t x2 = data.vertices[3];
-		  uint32_t y2 = data.vertices[4];
-		  uint32_t x3 = data.vertices[6];
-		  uint32_t y3 = data.vertices[7];
+		  uint32_t x1 = data->vertices[0];
+		  uint32_t y1 = data->vertices[1];
+		  uint32_t x2 = data->vertices[3];
+		  uint32_t y2 = data->vertices[4];
+		  uint32_t x3 = data->vertices[6];
+		  uint32_t y3 = data->vertices[7];
 
 		  float r_area = 2.0f / (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
 		  if (r_area < 0) r_area *= -1;
 
 		  // Turn into 8.24 fixed point
-		  data.r_area = (int32_t) r_area * (1 << 24);
+		  data->r_area = (int32_t) r_area * (1 << 24);
 
 		  // Copy into AXI/FIFO, pack into 32 bit words to avoid write strobe
-		  addr[0] = (data.vertices[1] << 16) | data.vertices[0];
-		  addr[1] = (data.vertices[3] << 16) | data.vertices[2];
-		  addr[2] = (data.vertices[5] << 16) | data.vertices[4];
-		  addr[3] = (data.vertices[7] << 16) | data.vertices[6];
-		  addr[4] = (data.color << 16) | data.vertices[8];
-		  addr[5] = data.r_area;
+//		  memcpy(addr,(data->vertices[1] << 16) | data->vertices[0],32);
+//		  *(addr-1) = 1;
+//		  uint32_t * test = 0x05;
+//		  *test = 1;
+//		  addr[0] = (data->vertices[1] << 16) | data->vertices[0];
+//		  addr[1] = (data->vertices[3] << 16) | data->vertices[2];
+//		  addr[2] = (data->vertices[5] << 16) | data->vertices[4];
+//		  addr[3] = (data->vertices[7] << 16) | data->vertices[6];
+//		  addr[4] = (data->color << 16) | data->vertices[8];
+//		  addr[5] = data->r_area;
 
-//		  xil_printf("Color: %d\r\n", data.color);
-//		  xil_printf("Inverse area (hex): %X", data.r_area);
+//		  typedef struct __attribute__((packed)) {
+//		      uint16_t v0;      // Maps to lower 16 bits of addr[0]
+//		      uint16_t v1;      // Maps to upper 16 bits of addr[0]
+//		      uint16_t v2;      // Maps to lower 16 bits of addr[1]
+//		      uint16_t v3;      // Maps to upper 16 bits of addr[1]
+//		      uint16_t v4;      // Maps to lower 16 bits of addr[2]
+//		      uint16_t v5;      // Maps to upper 16 bits of addr[2]
+//		      uint16_t v6;      // Maps to lower 16 bits of addr[3]
+//		      uint16_t v7;      // Maps to upper 16 bits of addr[3]
+//		      uint16_t v8;      // Maps to lower 16 bits of addr[4]
+//		      uint8_t  color;   // Maps to bits 16-23 of addr[4]
+//		      uint8_t  reserved; // Padding to keep next 32-bit aligned
+//		      int32_t  r_area;  // Maps to addr[5]
+//		  } TrianglePacket;
+//
+//		  TrianglePacket pkt;
+//
+//		  // Fill the packet (replaces your addr[0]...addr[5] logic)
+//		  pkt.v0 = data->vertices[0];
+//		  pkt.v1 = data->vertices[1];
+//		  pkt.v2 = data->vertices[2];
+//		  pkt.v3 = data->vertices[3];
+//		  pkt.v4 = data->vertices[4];
+//		  pkt.v5 = data->vertices[5];
+//		  pkt.v6 = data->vertices[6];
+//		  pkt.v7 = data->vertices[7];
+//		  pkt.v8 = data->vertices[8];
+//		  pkt.color = data->color;
+//		  pkt.reserved = 0; // Ensure bits 24-31 of addr[4] are clean
+//		  pkt.r_area = data->r_area;
+//
+//		  // Copy the entire packet to the AXI base address
+//		  // addr is your (uint32_t ) XPAR_HDMI_TEXT_CONTROLLER_0_AXI_BASEADDR
+//		  memcpy((void*)addr, &pkt, sizeof(TrianglePacket));
+//		  xil_printf("Color: %d\r\n", data->color);
+//		  xil_printf("Inverse area (hex): %X", data->r_area);
 
 		}
 

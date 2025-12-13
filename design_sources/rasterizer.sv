@@ -35,8 +35,7 @@ module rasterizer(
     input logic [7:0] zbuf_dout,
     output logic [16:0] zbuf_addr,
     output logic [7:0] zbuf_din,
-    output logic zbuf_we,
-    output logic zbuf_en
+    output logic zbuf_we
 );
 
 //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
