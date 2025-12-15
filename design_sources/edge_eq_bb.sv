@@ -53,15 +53,26 @@ logic [7:0] temp3;
 logic [7:0] temp4;
 assign temp1 = (v1x < v2x) ? v1x : v2x;
 assign bbxi = (temp1 < v3x) ? temp1 : v3x;
+assign bbxi = (bbxi > 'd320) ? 'd320 : bbxi;
+assign bbxi = (bbxi < 'd0) ? 'd0 : bbxi;
 
 assign temp2 = (v1x > v2x) ? v1x : v2x;
 assign bbxf = (temp2 > v3x) ? temp2 : v3x;
+assign bbxf = (bbxf > 'd320) ? 'd320 : bbxf;
+assign bbxf = (bbxf < 'd0) ? 'd0 : bbxf;
+
 
 assign temp3 = (v1y < v2y) ? v1y : v2y;
 assign bbyi = (temp3 < v3y) ? temp3 : v3y;
+assign bbyi = (bbyi > 'd255) ? 'd255 : bbyi;
+assign bbyi = (bbyi < 'd0) ? 'd0 : bbyi;
+
 
 assign temp4 = (v1y > v2y) ? v1y : v2y;
 assign bbyf = (temp4 > v3y) ? temp4 : v3y;
+assign bbyf = (bbyf > 'd255) ? 'd255 : bbyf;
+assign bbyf = (bbyf < 'd0) ? 'd0 : bbyf;
+
 
 
 //Edge equation calculations.

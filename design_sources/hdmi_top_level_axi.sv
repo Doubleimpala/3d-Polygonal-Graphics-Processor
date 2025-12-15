@@ -188,7 +188,7 @@ logic douta;
 // ADDR_LSB is used for addressing 32/64 bit registers/memories
 // ADDR_LSB = 2 for 32 bits (n downto 2)
 // ADDR_LSB = 3 for 64 bits (n downto 3)
-localparam integer ADDR_LSB = (C_S_AXI_DATA_WIDTH/32) + 1;
+localparam integer ADDR_LSB = 2;
 localparam integer OPT_MEM_ADDR_BITS = 2;
 //----------------------------------------------
 //-- Signals for user logic register space example
@@ -325,8 +325,14 @@ begin
  else begin
    if (slv_reg_wren)
      begin
-       fifo_wr_en <= 1'b0;
-       if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
+       for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+         //if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+           // Respective byte enables are asserted as per write strobes, note the use of the index part select operator
+           // '+:', you will need to understand how this operator works.
+         slv_regs[axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB]][(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+         //end
+         fifo_wr_en <= 1'b0;
+         if (axi_awaddr[4:2] == 3'd5 && !fifo_full) begin
            fifo_wr_en <= 1'b1;
            fifo_din <= {
                S_AXI_WDATA,  // r_area
@@ -337,13 +343,6 @@ begin
                slv_regs[0]   // v1y + v1x
            };
        end
-        
-       for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-         if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-           // Respective byte enables are asserted as per write strobes, note the use of the index part select operator
-           // '+:', you will need to understand how this operator works.
-           slv_regs[axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB]][(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-         end
     end else begin
         fifo_wr_en <= 'b0;
     end
@@ -946,7 +945,7 @@ always_ff @(posedge S_AXI_ACLK) begin
     buffers_cleared <= 0;
     clear_addr <= 0;
   end else begin
-    if(front != prev_front && controller_state == wait_tri) begin
+    if(front != prev_front) begin
       controller_state <= clear_buf;
       buffers_cleared <= 0;
       clear_addr <= 0;

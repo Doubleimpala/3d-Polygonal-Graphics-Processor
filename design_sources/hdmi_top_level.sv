@@ -33,24 +33,24 @@ module hdmi_text_controller_v1_0 #
     input logic  axi_aclk,
     input logic  axi_aresetn,
     input logic [C_AXI_ADDR_WIDTH-1 : 0] axi_awaddr,
-    // input logic [2 : 0] axi_awprot,
+    input logic [2 : 0] axi_awprot,
     input logic  axi_awvalid,
     output logic  axi_awready,
     input logic [C_AXI_DATA_WIDTH-1 : 0] axi_wdata,
-    // input logic [(C_AXI_DATA_WIDTH/8)-1 : 0] axi_wstrb,
+    input logic [(C_AXI_DATA_WIDTH/8)-1 : 0] axi_wstrb,
     input logic  axi_wvalid,
     output logic  axi_wready,
     output logic [1 : 0] axi_bresp,
     output logic  axi_bvalid,
-    input logic  axi_bready
-    input logic [C_AXI_ADDR_WIDTH-1 : 0] axi_araddr,
-    input logic [2 : 0] axi_arprot,
-    input logic  axi_arvalid,
-    output logic  axi_arready,
-    output logic [C_AXI_DATA_WIDTH-1 : 0] axi_rdata,
-    output logic [1 : 0] axi_rresp,
-    output logic  axi_rvalid,
-    input logic  axi_rready
+    input logic  axi_bready,
+     input logic [C_AXI_ADDR_WIDTH-1 : 0] axi_araddr,
+     input logic [2 : 0] axi_arprot,
+     input logic  axi_arvalid,
+     output logic  axi_arready,
+     output logic [C_AXI_DATA_WIDTH-1 : 0] axi_rdata,
+     output logic [1 : 0] axi_rresp,
+     output logic  axi_rvalid,
+     input logic  axi_rready
 );
 
 //additional logic variables as necessary to support VGA, and HDMI modules.
