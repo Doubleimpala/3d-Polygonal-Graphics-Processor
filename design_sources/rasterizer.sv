@@ -136,6 +136,7 @@ always_ff @(posedge clk) begin
                 end
             end
             edge_prods: begin
+                //Cast to signed so that multiplications happen correctly.
                 prod1 <= $signed(a1) * $signed({1'b0, bbxi});
                 prod2 <= $signed(b1) * $signed({1'b0, bbyi});
                 prod3 <= $signed(a2) * $signed({1'b0, bbxi});
@@ -145,6 +146,7 @@ always_ff @(posedge clk) begin
                 state <= edge_eqs;
             end
             edge_eqs: begin
+                //Pipelined registers.
                 e1 <= $signed(prod1) + $signed(prod2) + $signed(c1);
                 e2 <= $signed(prod3) + $signed(prod4) + $signed(c2);
                 e3 <= $signed(prod5) + $signed(prod6) + $signed(c3);
@@ -188,8 +190,8 @@ always_ff @(posedge clk) begin
                 state <= read_zbuf;
             end
             read_zbuf: begin
-                // Wait 1 cycle for BRAM to respond
-                state <= write;  // Now zbuf_dout is valid
+                //BRAM memory has a 1 cycle latency. We therefore add a wait state to ensure correct data is read.
+                state <= write;
             end
             write: begin
                 if(z < zbuf_dout) begin

@@ -33,6 +33,7 @@ logic [8:0] v1x, v2x, v3x;
 logic [7:0] v1y, v2y, v3y;
 
 //Latch the inputs. Since v1, v2, v3 inputs technically COULD change between the start and when our final output is computed and some things in the design are combinational, we should use latched versions.
+//Not sure if this will cause bugs, but taking some useful advice from AMD forums.
 always_ff @(posedge clk) begin
     if(edge_start) begin
         v1x <= v1x_in;
@@ -78,7 +79,7 @@ assign bbyf = (bbyf < 'd0) ? 'd0 : bbyf;
 //Edge equation calculations.
 //Edge(x,y) = A*x + B*y + C
 //A = y1-y2 = delta y.
-//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Ask the stack overflow I guess.
+//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Information here in this VERY useful post: https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
 //C = x1*y2 - x2*y1
 //So if Edge(x,y) >= 0 then the pixel is inside. If all 3 edges are >= 0, then we should draw the pixel.
 
