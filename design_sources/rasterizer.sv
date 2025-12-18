@@ -42,31 +42,31 @@ module rasterizer(
 //Very cool stack overflow post saved me from a lot of work!
 //But also we can increment to save computation in hardware instead of recomputing for every pixel.
 
-//Pseudocode that we implement.
-//Calculate E1, E2, E3 a single time.
-//Edge(x,y) = A*x + B*y + C
-/*
-PART 1:
-E1 = a1*bbxi + b1*bbyi + c1
-E2 = a2*bbxi + b2*bbyi + c2
-E3 = a3*bbxi + b3*bbyi + c3
+// Pseudocode that we implement.
+// Calculate E1, E2, E3 a single time.
+// Edge(x,y) = A*x + B*y + C
 
-PART 2:
-for(integer y = bbyi; y <= bbyf; y++) begin
-    E1_row = E1;
-    E2_row = E2;
-    E3_row = E3;
-    for(integer x = bbxi; x <= bbxf; x++) begin
-        if(E1_row >= 0 && E2_row >= 0 && E3_row >= 0): CHECK ZBUFFER & Write color.
-        E1_row += a1;
-        E2_row += a2;
-        E3_row += a3;
-    end
-    E1 += b1;
-    E2 += b2;
-    E3 += b3;
-end
-*/
+// PART 1:
+// E1 = a1*bbxi + b1*bbyi + c1
+// E2 = a2*bbxi + b2*bbyi + c2
+// E3 = a3*bbxi + b3*bbyi + c3
+
+// PART 2:
+// for(integer y = bbyi; y <= bbyf; y++) begin
+//     E1_row = E1;
+//     E2_row = E2;
+//     E3_row = E3;
+//     for(integer x = bbxi; x <= bbxf; x++) begin
+//         if(E1_row >= 0 && E2_row >= 0 && E3_row >= 0): CHECK ZBUFFER & Write color.
+//         E1_row += a1;
+//         E2_row += a2;
+//         E3_row += a3;
+//     end
+//     E1 += b1;
+//     E2 += b2;
+//     E3 += b3;
+// end
+
 
 //Pixel positions
 logic [8:0] x;

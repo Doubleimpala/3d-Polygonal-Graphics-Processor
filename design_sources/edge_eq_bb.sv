@@ -76,17 +76,17 @@ assign bbyf = (bbyf < 'd0) ? 'd0 : bbyf;
 
 
 
-//Edge equation calculations.
-//Edge(x,y) = A*x + B*y + C
-//A = y1-y2 = delta y.
-//B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Information here in this VERY useful post: https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
-//C = x1*y2 - x2*y1
-//So if Edge(x,y) >= 0 then the pixel is inside. If all 3 edges are >= 0, then we should draw the pixel.
+// Edge equation calculations.
+// Edge(x,y) = A*x + B*y + C
+// A = y1-y2 = delta y.
+// B = x2-x1 = delta x. It's in this direction because that's how the math works out apparently. Information here in this VERY useful post: https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+// C = x1*y2 - x2*y1
+// So if Edge(x,y) >= 0 then the pixel is inside. If all 3 edges are >= 0, then we should draw the pixel.
 
-//Multiplications take multiple cycles. Apparently the best way to force the synthesis to use DSP slices for our multiplication is to add registers in the multiplication operation.
-//We will therefore split this into 2 stages & therefore make it a 2 clock cycle process.
+// Multiplications take multiple cycles. Apparently the best way to force the synthesis to use DSP slices for our multiplication is to add registers in the multiplication operation.
+// We will therefore split this into 2 stages & therefore make it a 2 clock cycle process.
 
-//Edge v1 to v2.
+// Edge v1 to v2.
 // a1 = v1y - v2y, Takes 1 clock cycle. We do it combinationally after latching the inputs.
 // b1 = v2x - v1x, Takes 1 clock cycle. We do it combinationally after latching the inputs.
 // c1 = v1x*v2y - v2x*v1y, Takes 2 clock cycles. We do it in 2 stages & handshake.
