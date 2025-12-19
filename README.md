@@ -37,7 +37,6 @@ For our final project, we created a 3d renderer. Given a triangle mesh, it rende
 ## Documentation
 
 ### Top-Level Block Diagram
-
 ![Block Diagram](README_assets/block_diagram.png)
 
 This top level is very similar to Lab 7, except for the additional hardware necessary for interfacing with the keyboard over USB and interfacing with the MAX3421E chip over SPI. Here, we configured MicroBlaze to include a basic FPU as well as support for integer division. Otherwise, this is very similar to Lab 6 and Lab 7, so we will not discuss it here and instead move on to our two-stage process. We chose to use MicroBlaze for the triangle transformation phase, as it involved many matrix multiplications and divisions, as well as triangle culling, all of which would significantly complicate the hardware pipeline and control. For small to medium-sized scenes, MicroBlaze would be more than fast enough.
@@ -300,23 +299,28 @@ Purpose: This allows us to easily set the triangle mesh.
 ### Triangle Transformation
 
 The following outputs come from this testbench. It generates a wireframe image where the borders of the triangle are colored rather than the whole triangle for better visibility. This testbench is partially AI-generated. I asked Claude to generate a testbench that uses my Cornell Box mesh and the logic in my main function from hdmi\_text\_controller.c to create an output image. I ran this test using three different camera locations.
-
+cam\_x \= 127.5, cam\_y \= 127.5, cam\_z \= \-20, yaw \= 0:
 ![cam\_x \= 127.5, cam\_y \= 127.5, cam\_z \= \-20, yaw \= 0](README_assets/sw_scene_1.png)
 
+cam\_x \= 127.5, cam\_y \= 127.5, cam\_z \= \-20, yaw \= /12:
 ![cam\_x \= 127.5, cam\_y \= 127.5, cam\_z \= \-20, yaw \= /12](README_assets/sw_scene_2.png)
 
+cam\_x \= 127.5, cam\_y \= 127.5, cam\_z \= \-20, yaw \= 3/4:
 ![cam\_x \= 127.5, cam\_y \= 127.5, cam\_z \= \-20, yaw \= 3/4](README_assets/sw_scene_3.png)
 
 These different images display the world from the perspective of the aforementioned coordinates and camera orientations. We see that we successfully generate all triangles that might need to be drawn from a given point of view. In the last image, the small cube renders despite being fully behind the large cube. This is a result of z-buffering not being done in software but in hardware, and it is intended behavior.
 
 ### Triangle Drawing
-
+Buffer clearing annotated simulation:
 ![Buffer clearing annotated simulation](README_assets/buffer_clear_sim.png)
 
+Handshaking annotated simulation:
 ![Handshaking annotated simulation](README_assets/handshaking_sim.png)
 
+Rasterizer writing frame buffer annotated simulation:
 ![Rasterizer writing frame buffer annotated simulation](README_assets/raster_sim.png)
 
+Result of axi\_tb.sv:
 ![Result of axi\_tb.sv](README_assets/axi_bmp.png)
 
 Provided vertices:
