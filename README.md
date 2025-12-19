@@ -39,6 +39,7 @@ This top level is very similar to Lab 7, except for the additional hardware nece
 All of the supporting math was learned from [Scratchapixel](https://www.scratchapixel.com/) and [ogldev.org](http://ogldev.org).  
 We will walk through the theory behind the C code that implements the triangle transformation. We define our directions as follows: \+x is right, \+y is up, and \+z is into the screen. The first step is the transformation from world space into camera space by the view matrix:
 
+```
 float sin_yaw = sin_lookup(yaw);
         float cos_yaw = cos_lookup(yaw);
         float tx = -(cos_yaw * cam_x + sin_yaw * cam_z);
@@ -49,11 +50,13 @@ float sin_yaw = sin_lookup(yaw);
                                     0.0f,    1.0f, 0.0f,     ty,
                                     -sin_yaw, 0.0f, cos_yaw, tz,
                                     0.0f,    0.0f, 0.0f,     1.0f};
+```
 
 
 This matrix, although representing 3d coordinates, is a 4x4 matrix. This is so that translation and rotation can all be done by one matrix multiplication. When 3d vertices are loaded from the mesh, they are given a 4th w coordinate (remember this, it will be used later), which is just 1\. Thus, the transformed vertex will have tx, ty, and tz added to its correct dimensions, respectively. The upper 3x3 portion of this matrix is simply a clockwise rotation about the y-axis (up and down in screen space). The reason why tx, ty, and tz are negative, as well as the fact that the rotation is clockwise rather than counterclockwise, is that this matrix is the inverse of the matrix that moves the camera. For example, if we want to move the camera 5 units to the right and rotate it counterclockwise by 90 degrees, we instead move the entire world left 5 units and rotate the world 90 degrees clockwise.  
 The next step is transforming from camera space into clip space through perspective projection:
 
+```
  // ===== PROJECTION MATRIX (for [0, 1] depth) =====
         // Pre-computed for:
         // - FOV: 60 degrees
@@ -74,6 +77,7 @@ The next step is transforming from camera space into clip space through perspect
                                     0.0f,   1.732f, 0.0f,   0.0f,
                                	0.0f, 0.0f, 1.003f, -1.003f,
                                     0.0f,   0.0f, 1.0f, 0.0f};
+```
 
 
 The role of this matrix is to create a foreshortening effect – objects further away from the camera should look smaller, while objects closer to the camera should look bigger. We can also adjust how much fits into our view, or our Field of View (FOV). We also account for the aspect ratio by scaling the x-axis. We create foreshortening by projecting all vertices onto a 2x2 projection window, as shown below. Note to include more in our FOV, we effectively move further away or closer to the projection window (as opposed to moving the projection window, which would change its dimensions). Thus, our first step is calculating the distance from the camera to the projection window, d. tan(2)=1d , so d=1tan(2).   
@@ -92,6 +96,7 @@ These 2 matrices represent most of the conceptual difficulty of the transformati
 The first step of drawing triangles is to properly receive them from MicroBlaze over AXI. For this, we use a modified implementation of Lab 7.1 AXI and a FIFO. From MicroBlaze, we only write 32-bit words, so we don’t implement write strobe logic. In fact, we only use 6 addresses, which we write to sequentially from MicroBlaze. We use a buffer to store the writes to addresses 0-4. Then, on the 5th write, which writes to address 5, we pass the buffer contents along with the current write data into a FIFO, which holds the complete triangle data. 
 
 AXI Receives Data:  
+```
 slv\_regs\[axi\_awaddr\[ADDR\_LSB\+OPT\_MEM\_ADDR\_BITS:ADDR\_LSB\]\]\[(byte\_index\*8) \+: 8\] \<= S\_AXI\_WDATA\[(byte\_index\*8) \+: 8\];  
         //end  
         fifo\_wr\_en \<= 1'b0;  
@@ -105,11 +110,14 @@ slv\_regs\[axi\_awaddr\[ADDR\_LSB\+OPT\_MEM\_ADDR\_BITS:ADDR\_LSB\]\]\[(byte\_in
               slv\_regs\[1\],  // v2x \+ v1z  
               slv\_regs\[0\]   // v1y \+ v1x  
           };
+```
 
 The FIFO prevents the rest of the hardware from dropping triangles when it isn’t ready to process them. We implemented a handshake between the first pipeline stage of rasterization and the FIFO. The FIFO is read when the raster pipeline is ready, and the FIFO was not empty on the last cycle (as reads take one cycle).  
 This triangle data is then processed, and the packet is unpacked and dispersed to the respective modules. In the C code, we assemble a triangle packet that is 192 bits long. Once it is transmitted through AXI, we can decode it.
 
-C Packet Construction:  
+C Packet Construction:
+
+```
 typedef struct {  
              uint32\_t v0v1;      // Maps to lower 16 bits of addr\[0\]  
              uint32\_t v2v3;      // Maps to lower 16 bits of addr\[1\]  
@@ -131,6 +139,7 @@ assign v2x \= fifo\_dout\[56:48\];
 assign z1 \= fifo\_dout\[47:32\];  
 assign v1y \= fifo\_dout\[23:16\];  
 assign v1x \= fifo\_dout\[8:0\];
+```
 
 **Top Level Controller:**  
 We then enter the triangle processing pipeline. The entry into the pipeline begins with our highest-level triangle controller. This state machine produces the triangle ready signal and also checks for a triangle valid signal. The handshake occurs when both signals are on, and triangle ready is immediately deasserted 1 cycle later. This allows the FIFO read signal to be on for a single clock cycle, only popping a single triangle at a time.   
@@ -156,10 +165,12 @@ Once we have computed the bounding box, we must also compute the coefficients fo
 A lot of the math used this stack overflow post as a basis: https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle.
 
 An edge equation looks like this:  
+```
 Edge(x,y) \= A\*x \+ B\*y \+ C  
 A \= y1-y2 \= delta y.  
 B \= x2-x1 \= delta x.   
 C \= x1\*y2 \- x2\*y1
+```
 
 So if Edge(x,y) \>= 0 then the pixel is inside. If all 3 edges are \>= 0, then we should draw the pixel.  
 Multiplications take multiple cycles. The best way to force the synthesis to use DSP slices for our multiplication is to add pipeline registers in the multiplication operation. We therefore split this into 2 stages and therefore made it a 2-clock-cycle pipelined process.  
@@ -178,6 +189,7 @@ b3 \= v1x \- v3x, Takes 1 clock cycle. We do it combinationally after latching t
 c3 \= v3x\*v1y \- v1x\*v3y, Takes 2 clock cycles. We do it in 2 stages & handshake.
 
 Similar to the top-level triangle controller, the edge equations module also has two handshaking signals so that calculations begin and end on time, therefore passing accurate values to the next step in the pipeline. To achieve this, we created “edge\_start” and “edge\_done.” Start is asserted by the top-level triangle controller once buffers are cleared and all required information is retrieved from AXI. The edge equations module is then able to latch the correct information and begin processing it. Inside the module, we have 2 logic signals to keep track of the linear pipeline: ready\_s1, ready\_s2. The following controller steps through our pipeline and asserts “edge\_done” once the output information is correct:  
+```
 always\_ff @(posedge clk) begin  
    if(rst) begin  
        ready\_s1 \<= 0;  
@@ -188,10 +200,12 @@ always\_ff @(posedge clk) begin
    end  
 end  
 assign edge\_done \= ready\_s2;
+```
 
 **Rasterization Part 2: Inside Check & Writing Pixels (Stages 3 to 12 (non-linear)):**  
 Our computation then moves into the rasterizer module inside rasterizer.sv. This module contains a 13-state FSM with a non-linear pixel drawing pipeline. It takes the edge equation coefficients and bounding box from the previous module, as well as the inverse area and color from AXI as inputs. As output, it’s able to supply frame buffer and z-buffer reading/writing signals. Therefore, the bulk of our hardware computation takes place inside this module.  
 Below is the pseudo-code for this module:  
+```
 Calculate E1, E2, E3 a single time.  
 Edge(x,y) \= A\*x \+ B\*y \+ C
 
@@ -215,10 +229,12 @@ for(integer y \= bbyi; y \<= bbyf; y\++) begin
    E2 \+= b2;  
    E3 \+= b3;  
 end
+```
 
 We first begin with a halt state that begins the handshaking process for the rasterization module. The top-level triangle controller asserts ”rasterizer\_start” once data is ready from the edge module, and this triggers the halt state to move into the edge equation evaluation.  
 Like in the pseudo code, we must first compute all three of our edges.   
 This requires a multiplication, so we do this in 2 separate cycles: one to compute all 6 products, and another to sum them into our edges. We also must cast these edge coefficients to be signed such that our multiplications also end up signed.  
+```
 prod1 \<= $signed(a1) \* $signed({1'b0, bbxi});  
 prod2 \<= $signed(b1) \* $signed({1'b0, bbyi});  
 prod3 \<= $signed(a2) \* $signed({1'b0, bbxi});  
@@ -229,6 +245,7 @@ And in another state:
 e1 \<= $signed(prod1) \+ $signed(prod2) \+ $signed(c1);  
 e2 \<= $signed(prod3) \+ $signed(prod4) \+ $signed(c2);  
 e3 \<= $signed(prod5) \+ $signed(prod6) \+ $signed(c3);
+```
 
 We can then begin computing pixels inside the bounding box. Just as in the loop, we must first iterate through each cell of each row, and then every row until we reach the bottom of the bounding box. To accomplish this in hardware, we cache our edge equations for the start of each row and increment it in another state called col\_inc (short for column increment) until we reach the end of the row in the bounding box. We also increment between rows in a state called row\_inc. These states ensure that we cover every pixel in the bounding box.
 
