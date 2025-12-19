@@ -1,30 +1,6 @@
-# Instructions
-1. Set up Lab 7.2 exactly as per 15.1 Introduction to AXI4-lite and HDMI (rev 2)-1.pdf document (can't link because document is on Canvas).
-2. Import design_sources/* into the hdmi_text_controller custom IP as design sources (replace the top level and AXI files)
-3. Import sim_sources/* into the hdmi_text_controller custom IP as simulation sources
-4. Import software_sources/* into Vitis. The mesh used in the demo is provided in the header file.
-5. Generate bitstream in Vivado, then build and run in Vitis!
 
-# IP Setup.
-1. Our double frame buffers use 1 memory address per pixel. Since we are upscaling a 320x240 VGA signal to 640x480, we have 2 frame buffer BRAM modules with 17 bit addresses and a depth of 76800. They must be true dual port, and preloaded with values of 0. Name this IP blk_mem_gen_0.
-2. We have a single port zbuffer which has 16 bit wide values. Therefore it has an 18 bit address and a depth of 153600. Name this IP blk_mem_gen_1.
-3. We also have a hardware FIFO to coordinate AXI transfers. This way we can queue triangles from the microblaze in the FIFO until the hardware is ready to rasterize them. Initialize this with a write width of 192 bits, and a depth of 32.
-4. Clocking wizard inside the hdmi_text_controller IP is set up with 100 MHz input, and one output at 25 MHz (approx. VGA clocking speed) and the other one at 125 MHz (5x clock).
-
-# Microblaze and I/O setup.
-1. Set up the microblaze with a 16 Kb memory size. When Vitis has opened, use a following linker flag to increase the runtime stack size to x4000 (without this some functions may not run due to insufficient stack space).
-2. To display UART outputs or use the keyboard (not implemented but set up) you must add the AXI UART IP, as well as a few AXI GPIO IPs to set up the keyboard keycode capturing, inturrupt signals and other required IPs. Since we did not implement the keyboard, we will not go into detail on how to set it up.
-
-
-# **ECE 385**
-
-## Fall 2025
-
-## Final Project
-
-# 
-
-# 
+# 3d Polygonal Graphics Processor
+## **UIUC ECE 385** Fall 2025 Final Project
 
 Tanmay Garudadri  
 Zaheen Jamil  
@@ -33,6 +9,23 @@ TA: Boyuan Tian
 ## Introduction
 
 For our final project, we created a 3d renderer. Given a triangle mesh, it renders the world from arbitrary camera positions and orientations. We choose to render the Cornell Box, a classic environment for graphics testing. This was built as an extension of Lab 7.2. We implemented a framebuffer; we no longer use a fixed-point graphics function. Thus, we have per-pixel-level granularity when drawing to the screen. Of course, this greatly complicated the rendering hardware. As opposed to Lab 7.2, where MicroBlaze simply modified 2400 character locations, MicroBlaze now sends triangle data to hardware, which must then render that triangle, and this happens for every triangle on screen. At a high level, our project can be split into a two-stage process: triangle transformation (software) and triangle drawing (hardware). Triangle transformation is the process of transforming each triangle in world space into camera space and then into raster space. This happens on MicroBlaze. Then, the results of this process are passed on to the triangle drawing phase. Given the vertices of the triangle in screen space, we must draw to the appropriate pixels. This involves iterating through a bounding box and checking if the current iteration should draw using calculated edge equations as well as a z-buffer. This happens entirely in hardware.
+
+
+## Instructions
+1. Import design_sources/* into the hdmi_text_controller custom IP as design sources (replace the top level and AXI files)
+2. Import sim_sources/* into the hdmi_text_controller custom IP as simulation sources
+3. Import software_sources/* into Vitis. The mesh used in the demo is provided in the header file.
+4. Generate bitstream in Vivado, then build and run in Vitis!
+
+### IP Setup.
+1. Our double frame buffers use 1 memory address per pixel. Since we are upscaling a 320x240 VGA signal to 640x480, we have 2 frame buffer BRAM modules with 17 bit addresses and a depth of 76800. They must be true dual port, and preloaded with values of 0. Name this IP blk_mem_gen_0.
+2. We have a single port zbuffer which has 16 bit wide values. Therefore it has an 18 bit address and a depth of 153600. Name this IP blk_mem_gen_1.
+3. We also have a hardware FIFO to coordinate AXI transfers. This way we can queue triangles from the microblaze in the FIFO until the hardware is ready to rasterize them. Initialize this with a write width of 192 bits, and a depth of 32.
+4. Clocking wizard inside the hdmi_text_controller IP is set up with 100 MHz input, and one output at 25 MHz (approx. VGA clocking speed) and the other one at 125 MHz (5x clock).
+
+### Microblaze and I/O setup.
+1. Set up the microblaze with a 16 Kb memory size. When Vitis has opened, use a following linker flag to increase the runtime stack size to x4000 (without this some functions may not run due to insufficient stack space).
+2. To display UART outputs or use the keyboard (not implemented but set up) you must add the AXI UART IP, as well as a few AXI GPIO IPs to set up the keyboard keycode capturing, inturrupt signals and other required IPs. Since we did not implement the keyboard, we will not go into detail on how to set it up.
 
 ## Documentation
 
